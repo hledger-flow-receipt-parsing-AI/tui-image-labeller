@@ -1,0 +1,22 @@
+STARET
+next_pos=2
+next_pos=2
+next_pos=2
+next_pos=2
+next_pos=2
+key=previous_question
+next_pos=2
+widget=<MultipleChoiceWidget selectable fixed/flow widget>
+widget=<InputValidationQuestion selectable flow widget '' caption='Receipt owner address (optional): ' edit_pos=0>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>
+widget=<InputValidationQuestion selectable flow widget 'a' caption='Shop name: ' edit_pos=1>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>
+widget=<InputValidationQuestion selectable flow widget 'asd' caption='Shop address: ' edit_pos=3>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>
+widget=<InputValidationQuestion selectable flow widget '' caption='Subtotal (Optional, press enter to skip): ' edit_pos=0>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>
+widget=<InputValidationQuestion selectable flow widget '' caption='Total tax (Optional, press enter to skip): ' edit_pos=0>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>
+widget=<InputValidationQuestion selectable flow widget '32' caption='Payed total:' edit_pos=2>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>
+widget=<MultipleChoiceWidget selectable fixed/flow widget>, type=<class 'tui_labeller.tuis.urwid.mc_question.MultipleChoiceWidget.MultipleChoiceWidget'>
+widget=<MultipleChoiceWidget selectable fixed/flow widget>
+widget=<InputValidationQuestion selectable flow widget '' caption='Amount paid by card: ' edit_pos=0>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>
+widget=<InputValidationQuestion selectable flow widget '' caption='Change returned (card): ' edit_pos=0>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>
+widget=<InputValidationQuestion selectable flow widget '' caption='Account holder name: ' edit_pos=0>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>
+widget=<InputValidationQuestion selectable flow widget '' caption='Bank name (e.g., triodos, bitfavo): ' edit_pos=0>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>
+widget=<InputValidationQuestion selectable flow widget '' caption='Account type (e.g., checking, credit): ' edit_pos=0>, type=<class 'tui_labeller.tuis.urwid.input_validation.InputValidationQuestion.InputValidationQuestion'>

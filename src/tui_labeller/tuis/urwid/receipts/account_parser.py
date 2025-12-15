@@ -64,6 +64,7 @@ def parse_account_string(
 @typechecked
 def get_accounts_from_answers(
     *,
+    the_date: datetime,
     config: Config,
     final_answers: List[
         Tuple[
@@ -138,8 +139,9 @@ def get_accounts_from_answers(
             account_transactions.append(
                 AccountTransaction(
                     account=account,
-                    currency=currency,
-                    amount_paid=amount_paid,
+                    # currency=currency,
+                    the_date=the_date,
+                    amount_out_account=amount_paid,
                     change_returned=change_returned,
                 )
             )
@@ -219,6 +221,7 @@ def get_bought_and_returned_items(
 
     # Get the AccountTransactions.
     account_transactions: List[AccountTransaction] = get_accounts_from_answers(
+        the_date=the_date,
         config=config,
         final_answers=final_answers,
         hledger_account_infos=hledger_account_infos,

@@ -348,9 +348,9 @@ def set_answers(
                 if question_text == "Belongs to bank/accounts_without_csv:":
                     answer = str(account_transaction.account.to_string())
                 elif question_text == "Currency:":
-                    answer = account_transaction.currency
+                    answer = account_transaction.account.base_currency
                 elif question_text == "Amount paid from account:":
-                    answer = account_transaction.amount_paid
+                    answer = account_transaction.amount_out_account
                 elif question_text == "Change returned to account:":
                     answer = account_transaction.change_returned
                 elif question_text == "Add another account (y/n)?":

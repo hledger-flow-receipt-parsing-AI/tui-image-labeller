@@ -219,6 +219,7 @@ def build_receipt_from_answers(
         ),
         "receipt_category": average_receipt_category,
     }
+    receipt_params["config"] = config
 
     if verbose:
         pprint(receipt_params)

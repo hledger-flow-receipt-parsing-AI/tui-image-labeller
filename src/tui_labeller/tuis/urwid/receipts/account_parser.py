@@ -141,7 +141,7 @@ def get_accounts_from_answers(
                     account=account,
                     # currency=currency,
                     the_date=the_date,
-                    amount_out_account=amount_paid,
+                    tendered_amount_out=amount_paid,
                     change_returned=change_returned,
                 )
             )

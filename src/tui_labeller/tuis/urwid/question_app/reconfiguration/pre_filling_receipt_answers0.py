@@ -350,7 +350,7 @@ def set_answers(
                 elif question_text == "Currency:":
                     answer = account_transaction.account.base_currency
                 elif question_text == "Amount paid from account:":
-                    answer = account_transaction.amount_out_account
+                    answer = account_transaction.tendered_amount_out
                 elif question_text == "Change returned to account:":
                     answer = account_transaction.change_returned
                 elif question_text == "Add another account (y/n)?":

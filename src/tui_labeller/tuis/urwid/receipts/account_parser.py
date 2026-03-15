@@ -54,7 +54,13 @@ def parse_account_string(
         ):
             found_account_configs.append(account_config)
     if len(found_account_configs) < 1:
-        raise ValueError(f"Did not find account for:{input_string}")
+        # Foreign currency: currency differs from account's base_currency.
+        # Fall back to matching by account string only.
+        for account_config in config.accounts:
+            if account_config.account.to_string() == input_string:
+                found_account_configs.append(account_config)
+        if len(found_account_configs) < 1:
+            raise ValueError(f"Did not find account for:{input_string}")
     if len(found_account_configs) > 1:
         raise ValueError(f"Found more than 1 account for:{input_string}")
 
@@ -136,10 +142,14 @@ def get_accounts_from_answers(
                 )
             change_returned = float(change_answer)
 
+            # Set payment_currency when it differs from the account's base currency
+            payment_currency = (
+                currency if currency != account.base_currency else None
+            )
             account_transactions.append(
                 AccountTransaction(
                     account=account,
-                    # currency=currency,
+                    payment_currency=payment_currency,
                     the_date=the_date,
                     tendered_amount_out=amount_paid,
                     change_returned=change_returned,

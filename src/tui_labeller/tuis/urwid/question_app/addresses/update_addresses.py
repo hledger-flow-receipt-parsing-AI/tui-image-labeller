@@ -293,7 +293,10 @@ def get_initial_complete_list(
     parent_match.sort(key=freq_sort_key)
     rest.sort(key=freq_sort_key)
 
-    # Build result: manual address + up to 11 historical addresses.
+    # Build result: manual address at index 0, then all historical
+    # addresses in tier order.  The visible window (MAX_ADDRESS_CHOICES)
+    # is enforced by the scrolling widget, not here — so all addresses
+    # remain selectable via arrow-key scrolling.
     choices: List[str] = ["manual address"]
     shop_ids: List[ShopId] = [
         ShopId(name="manual address", address=Address())
@@ -301,8 +304,6 @@ def get_initial_complete_list(
 
     seen: set = set()
     for shop_key in exact_or_sub + parent_match + rest:
-        if len(choices) >= MAX_ADDRESS_CHOICES:
-            break
         if shop_key in seen:
             continue
         seen.add(shop_key)

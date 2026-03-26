@@ -10,10 +10,14 @@ from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.multiple_choice_question.helper import (
     get_selected_caption,
     get_vc_question,
+    get_vc_question_with_highlight,
 )
 from tui_labeller.tuis.urwid.question_data_classes import (
     VerticalMultipleChoiceQuestionData,
 )
+
+
+MAX_VISIBLE_ADDRESSES = 12
 
 
 class VerticalMultipleChoiceWidget(urwid.Edit):
@@ -32,6 +36,10 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         self.indentation: int = 1
         self.current_batch: int = 0
         self.question_data: VerticalMultipleChoiceQuestionData = question_data
+        self._scrollable: bool = bool(
+            question_data.extra_data
+            and question_data.extra_data.get("scrollable")
+        )
         super().__init__(caption=self._get_batch_caption())
         self.input_type: InputType = InputType.INTEGER
         self.ai_suggestions = ai_suggestions or []
@@ -40,10 +48,6 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         self.history_suggestion_box = history_suggestion_box
         self.pile = pile
         self._in_autocomplete: bool = False
-        self._scrollable: bool = bool(
-            question_data.extra_data
-            and question_data.extra_data.get("scrollable")
-        )
         if question_data.navigation_display:
             self.navigation_display: Union[None, AttrMap] = (
                 question_data.navigation_display
@@ -61,6 +65,22 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
     @typechecked
     def _get_batch_caption(self) -> str:
         """Returns the caption for the current batch of choices."""
+        if self._scrollable:
+            # For scrollable widgets show a windowed view around the
+            # current selection.
+            idx = 0
+            try:
+                text = self.get_edit_text()
+                if text.strip():
+                    idx = int(text)
+            except (ValueError, AttributeError):
+                idx = 0
+            return get_vc_question_with_highlight(
+                vc_question_data=self.question_data,
+                indentation=self.indentation,
+                highlighted_index=idx,
+                window_size=MAX_VISIBLE_ADDRESSES,
+            )
         return get_vc_question(
             vc_question_data=self.question_data,
             indentation=self.indentation,
@@ -213,7 +233,14 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
 
         self.set_edit_text(str(new_index))
         self.set_edit_pos(len(str(new_index)))
-        self.set_caption(self._get_batch_caption())
+        self.set_caption(
+            get_vc_question_with_highlight(
+                vc_question_data=self.question_data,
+                indentation=self.indentation,
+                highlighted_index=new_index,
+                window_size=MAX_VISIBLE_ADDRESSES,
+            )
+        )
 
     @typechecked
     def keypress(self, size, key):

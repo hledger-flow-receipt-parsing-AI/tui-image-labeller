@@ -6,6 +6,7 @@ from hledger_preprocessor.TransactionObjects.Receipt import (
 )
 from typeguard import typechecked
 
+from tui_labeller.tuis.urwid.prefill_receipt.helper import _get_exchanged_item
 from tui_labeller.tuis.urwid.question_app.generator import create_questionnaire
 from tui_labeller.tuis.urwid.question_app.reconfiguration.adding_questions import (
     create_new_account_questions_to_add,
@@ -50,9 +51,8 @@ def build_prefilled_tui(
     Returns:
         QuestionnaireApp: The constructed QuestionnaireApp with questions for the pre-filled receipt.
     """
-    net_bought_item = prefilled_receipt.net_bought_items
+    net_bought_item = _get_exchanged_item(prefilled_receipt)
     account_transactions = net_bought_item.account_transactions
-    len(account_transactions)
 
     # Template for account questions
     template = AccountQuestions(

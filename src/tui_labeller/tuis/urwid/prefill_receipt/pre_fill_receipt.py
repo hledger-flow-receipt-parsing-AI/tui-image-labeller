@@ -22,7 +22,11 @@ from tui_labeller.tuis.urwid.prefill_receipt.set_address import (
 from tui_labeller.tuis.urwid.question_app.reconfiguration.pre_filling_receipt_answers0 import (
     answer_prefilled_account_questions,
 )
+from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (
+    HorizontalMultipleChoiceWidget,
+)
 from tui_labeller.tuis.urwid.question_app.reconfiguration.reconfiguration import (
+    WITHDRAWAL_TOGGLE_QUESTION,
     preserve_current_answers,
 )
 from tui_labeller.tuis.urwid.QuestionnaireApp import QuestionnaireApp
@@ -60,9 +64,30 @@ def apply_prefilled_receipt(
         )
 
         set_receipt_details(tui=third_tui, prefilled_receipt=prefilled_receipt)
+        _set_withdrawal_toggle(
+            tui=third_tui, prefilled_receipt=prefilled_receipt
+        )
         return third_tui
     else:
         return tui
+
+
+@typechecked
+def _set_withdrawal_toggle(
+    *,
+    tui: QuestionnaireApp,
+    prefilled_receipt: Receipt,
+) -> None:
+    """Set the withdrawal toggle to 'y' if the receipt has withdrawal_metadata."""
+    has_metadata = prefilled_receipt.withdrawal_metadata is not None
+    for input_widget in tui.inputs:
+        widget = input_widget.base_widget
+        if (
+            isinstance(widget, HorizontalMultipleChoiceWidget)
+            and widget.question_data.question == WITHDRAWAL_TOGGLE_QUESTION
+        ):
+            widget.set_answer("y" if has_metadata else "n")
+            break
 
 
 @typechecked
@@ -127,9 +152,16 @@ def set_receipt_details(
                                 original_widget.set_answer(value=value)
                             found_questions[key] = True
 
-    # Check if all expected questions were found
+    # Check if all expected questions were found.
+    # receipt_category is allowed to be missing for withdrawal receipts
+    # (the category question is removed when the withdrawal toggle is 'y').
+    allowed_missing = set()
+    if prefilled_receipt.withdrawal_metadata is not None:
+        allowed_missing.add("receipt_category")
     missing_questions = [
-        key for key, found in found_questions.items() if not found
+        key
+        for key, found in found_questions.items()
+        if not found and key not in allowed_missing
     ]
     if missing_questions:
         raise ValueError(f"Missing questions: {', '.join(missing_questions)}")

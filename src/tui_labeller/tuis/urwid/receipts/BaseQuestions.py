@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Optional, Union
 
 from typeguard import typechecked
 
@@ -6,9 +6,18 @@ from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.question_data_classes import (
     AISuggestion,
     DateQuestionData,
+    HorizontalMultipleChoiceQuestionData,
     HistorySuggestion,
     InputValidationQuestionData,
 )
+
+
+def validate_category(value: str) -> Optional[str]:
+    """Validate the category input.
+
+    Returns None if valid, or an error message string if invalid.
+    """
+    return None
 
 
 class BaseQuestions:
@@ -21,8 +30,29 @@ class BaseQuestions:
     @typechecked
     def create_base_questions(
         self,
-    ) -> List[Union[DateQuestionData, InputValidationQuestionData]]:
-        return [self.create_date_question(), self.get_category_question()]
+    ) -> List[
+        Union[
+            DateQuestionData,
+            InputValidationQuestionData,
+            HorizontalMultipleChoiceQuestionData,
+        ]
+    ]:
+        return [
+            self.create_date_question(),
+            self.get_withdrawal_toggle(),
+            self.get_category_question(),
+        ]
+
+    @typechecked
+    def get_withdrawal_toggle(self) -> HorizontalMultipleChoiceQuestionData:
+        return HorizontalMultipleChoiceQuestionData(
+            question="Is this a withdrawal? (y/n)",
+            choices=["y", "n"],
+            ai_suggestions=[],
+            ans_required=True,
+            reconfigurer=True,
+            terminator=False,
+        )
 
     @typechecked
     def create_date_question(self) -> DateQuestionData:
@@ -51,8 +81,9 @@ class BaseQuestions:
                 HistorySuggestion("apple", 2),
             ],
             ans_required=True,
-            reconfigurer=False,
+            reconfigurer=True,
             terminator=False,
+            custom_validator=validate_category,
         )
 
     def verify_unique_questions(self, questions):

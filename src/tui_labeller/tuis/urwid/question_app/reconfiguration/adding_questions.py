@@ -201,18 +201,38 @@ def actually_set_answers(
     new_account_end_idx: int,
     new_tui: QuestionnaireApp,
 ):
-    # Apply preserved answers only to questions outside the new account questions' indices
+    # First pass: positional matching (skip new account question indices).
+    matched_preserved_indices: set = set()
+    matched_widget_indices: set = set()
     for idx, input_widget in enumerate(new_tui.inputs):
-
         widget = input_widget.base_widget
         question_text = widget.question_data.question
 
         if new_account_start_idx <= idx < new_account_end_idx:
-
             continue  # Skip new account questions
         elif len(preserved_answers) > idx and (
             preserved_answers[idx]
             and question_text == preserved_answers[idx][0]
         ):
-
             widget.set_answer(preserved_answers[idx][1])
+            matched_preserved_indices.add(idx)
+            matched_widget_indices.add(idx)
+
+    # Second pass: name-based fallback for answers shifted by insertion.
+    unmatched = [
+        pa for i, pa in enumerate(preserved_answers)
+        if pa is not None and i not in matched_preserved_indices
+    ]
+    if unmatched:
+        answer_map: dict = {}
+        for q_text, ans in unmatched:
+            answer_map[q_text] = ans
+        for idx, input_widget in enumerate(new_tui.inputs):
+            if new_account_start_idx <= idx < new_account_end_idx:
+                continue
+            if idx in matched_widget_indices:
+                continue
+            widget = input_widget.base_widget
+            q = widget.question_data.question
+            if q in answer_map:
+                widget.set_answer(answer_map[q])

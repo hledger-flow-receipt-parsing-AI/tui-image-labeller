@@ -50,6 +50,7 @@ class InputValidationQuestionData:
         history_suggestions: List[HistorySuggestion],
         default: Optional[str] = None,
         question_id: Optional[str] = None,
+        custom_validator: Optional[callable] = None,
     ):
         self.question: str = question
         self.input_type = input_type
@@ -60,6 +61,7 @@ class InputValidationQuestionData:
         self.history_suggestions = history_suggestions
         self.default: str = default
         self.question_id: Union[None, str] = question_id
+        self.custom_validator: Optional[callable] = custom_validator
 
 
 class VerticalMultipleChoiceQuestionData:

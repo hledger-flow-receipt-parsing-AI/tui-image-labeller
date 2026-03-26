@@ -145,8 +145,9 @@ class AccountQuestions:
             seen.add(question)
 
     def get_transaction_question_identifier(self) -> str:
+        """Return the 'Add another account (y/n)?' question string."""
         if not isinstance(self, AccountQuestions):
             raise TypeError(
                 f"This {type(self)} is not a AccountQuestions object."
             )
-        return self.account_questions[-1].question
+        return "Add another account (y/n)?"

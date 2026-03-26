@@ -8,7 +8,10 @@ from hledger_preprocessor.receipt_transaction_matching.get_bank_data_from_transa
 )
 from hledger_preprocessor.TransactionObjects.Address import Address
 from hledger_preprocessor.TransactionObjects.ExchangedItem import ExchangedItem
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
+from hledger_preprocessor.TransactionObjects.Receipt import (
+    Receipt,
+    WithdrawalMetadata,
+)
 from hledger_preprocessor.TransactionObjects.ShopId import ShopId
 from typeguard import typechecked
 
@@ -26,6 +29,7 @@ from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidg
 )
 from tui_labeller.tuis.urwid.receipts.account_parser import (
     get_bought_and_returned_items,
+    parse_withdrawal_answers,
 )
 
 
@@ -130,8 +134,13 @@ def build_receipt_from_answers(
             country=country or None,
         )
 
-    average_receipt_category: str = get_value(
-        caption="\nBookkeeping expense category:", required=True
+    is_withdrawal = get_value(
+        caption="Is this a withdrawal? (y/n)", required=False
+    )
+    _is_withdrawal = is_withdrawal and str(is_withdrawal).lower() == "y"
+    average_receipt_category: Optional[str] = get_value(
+        caption="\nBookkeeping expense category:",
+        required=not _is_withdrawal,
     )
     the_date: datetime = get_value(
         caption="Receipt date and time:\n", required=True
@@ -184,6 +193,26 @@ def build_receipt_from_answers(
             shop_account_nr=get_value(caption="\nShop account nr:\n"),
         )
 
+    # Parse withdrawal metadata if the withdrawal toggle is 'y'.
+    withdrawal_metadata: Optional[WithdrawalMetadata] = None
+    if _is_withdrawal:
+        # The receipt amount is the net destination-side amount
+        # (change_returned - tendered_amount_out on the destination account).
+        receipt_amount: Optional[float] = None
+        for item in (net_returned_items, net_bought_items):
+            if item is not None and item.account_transactions:
+                for at in item.account_transactions:
+                    receipt_amount = at.change_returned - at.tendered_amount_out
+                    break
+                if receipt_amount is not None:
+                    break
+        withdrawal_metadata = parse_withdrawal_answers(
+            config=config,
+            final_answers=final_answers,
+            the_date=the_date,
+            receipt_amount=receipt_amount,
+        )
+
     # Map the answers to Receipt parameters
     receipt_params = {
         "raw_img_filepath": raw_receipt_img_filepath,
@@ -218,6 +247,7 @@ def build_receipt_from_answers(
             caption="\nReceipt owner address (optional):\n"
         ),
         "receipt_category": average_receipt_category,
+        "withdrawal_metadata": withdrawal_metadata,
     }
     receipt_params["config"] = config
 

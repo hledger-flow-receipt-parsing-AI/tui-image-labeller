@@ -82,13 +82,25 @@ class InputValidationQuestion(urwid.Edit):
 
     def safely_go_to_next_question(self) -> Union[str, None]:
         if self.edit_text.strip():  # Check if current input has text
+            # Run custom validator if present.
+            if self.question_data.custom_validator is not None:
+                error_msg = self.question_data.custom_validator(
+                    self.edit_text.strip()
+                )
+                if error_msg is not None:
+                    self.owner.set_attr_map({None: "error"})
+                    return None
             self.owner.set_attr_map({None: "normal"})
+            if self.question_data.reconfigurer:
+                return "reconfigurer"
             return "next_question"
         # Set highlighting to error if required and empty
         if self.question_data.ans_required:
             self.owner.set_attr_map({None: "error"})
             return None
         else:
+            if self.question_data.reconfigurer:
+                return "reconfigurer"
             return "next_question"
 
     def handle_attempt_to_navigate_to_previous_question(

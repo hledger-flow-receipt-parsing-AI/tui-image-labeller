@@ -1,8 +1,10 @@
 from datetime import datetime
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import urwid
+from hledger_preprocessor.config.AccountConfig import AccountConfig
 from hledger_preprocessor.config.load_config import Config
+from hledger_preprocessor.generics.Transaction import Transaction
 from hledger_preprocessor.receipt_transaction_matching.get_bank_data_from_transactions import (
     HledgerFlowAccountInfo,
 )
@@ -41,6 +43,9 @@ from tui_labeller.tuis.urwid.receipts.create_receipt import (
     build_receipt_from_answers,
 )
 from tui_labeller.tuis.urwid.receipts.OptionalQuestions import OptionalQuestions
+from tui_labeller.tuis.urwid.receipts.WithdrawalQuestions import (
+    WithdrawalQuestions,
+)
 
 
 @typechecked
@@ -52,11 +57,18 @@ def build_receipt_from_urwid(
     accounts_without_csv: set[str],
     labelled_receipts: List[Receipt],
     prefilled_receipt: Optional[Receipt],
+    csv_transactions_per_account: Optional[
+        Dict[AccountConfig, Dict[int, List[Transaction]]]
+    ] = None,
 ) -> Receipt:
     account_infos_str: List[str] = list(
         {x.to_colon_separated_string() for x in hledger_account_infos}
     )
     account_questions = AccountQuestions(
+        account_infos_str=account_infos_str,
+        accounts_without_csv=accounts_without_csv,
+    )
+    withdrawal_questions = WithdrawalQuestions(
         account_infos_str=account_infos_str,
         accounts_without_csv=accounts_without_csv,
     )
@@ -77,6 +89,18 @@ def build_receipt_from_urwid(
         prefilled_receipt=prefilled_receipt,
         account_infos_str=account_infos_str,
         accounts_without_csv=accounts_without_csv,
+    )
+    # Run reconfiguration before the first render so prefilled answers
+    # (e.g. withdrawal toggle = "y") inject their dependent questions.
+    tui = get_configuration(
+        tui=tui,
+        account_questions=account_questions,
+        optional_questions=optional_questions,
+        labelled_receipts=labelled_receipts,
+        withdrawal_questions=withdrawal_questions,
+        config=config,
+        csv_transactions_per_account=csv_transactions_per_account,
+        prefilled_receipt=prefilled_receipt,
     )
     tui.run()  # Start the first run.
     while True:
@@ -109,6 +133,10 @@ def build_receipt_from_urwid(
                 account_questions=account_questions,
                 optional_questions=optional_questions,
                 labelled_receipts=labelled_receipts,
+                withdrawal_questions=withdrawal_questions,
+                config=config,
+                csv_transactions_per_account=csv_transactions_per_account,
+                prefilled_receipt=prefilled_receipt,
             )
 
             # Update the pile based on the reconfiguration.

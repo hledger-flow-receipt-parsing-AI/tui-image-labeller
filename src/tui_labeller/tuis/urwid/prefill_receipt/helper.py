@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from hledger_preprocessor.config.load_config import Config
 from hledger_preprocessor.TransactionObjects.ExchangedItem import ExchangedItem
@@ -6,6 +6,23 @@ from hledger_preprocessor.TransactionObjects.Receipt import Receipt
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.receipts.AccountQuestions import AccountQuestions
+
+
+def _get_exchanged_item(prefilled_receipt: Receipt) -> ExchangedItem:
+    """Return the ExchangedItem holding account transactions.
+
+    For normal receipts this is ``net_bought_items``; for withdrawal
+    receipts (amount_paid=0, so not a "purchase") it is
+    ``net_returned_items``.
+    """
+    item: Optional[ExchangedItem] = prefilled_receipt.net_bought_items
+    if item is None:
+        item = prefilled_receipt.net_returned_items
+    if item is None:
+        raise ValueError(
+            "Receipt has neither net_bought_items nor net_returned_items"
+        )
+    return item
 
 
 @typechecked
@@ -18,11 +35,7 @@ def generate_current_questions(
 ) -> List[AccountQuestions]:
     account_questions_list = []
 
-    # for net_bought_item in prefilled_receipt.net_bought_items:
-    net_bought_item: ExchangedItem = prefilled_receipt.net_bought_items
-    # Create a new AccountQuestions object for each transaction
-
-    # Set answers for the questions based on the transaction.
+    net_bought_item: ExchangedItem = _get_exchanged_item(prefilled_receipt)
 
     for account_transaction in net_bought_item.account_transactions:
         new_account_questions = AccountQuestions(
@@ -53,9 +66,7 @@ def generate_current_questions(
 @typechecked
 def get_number_of_account_transactions(*, prefilled_receipt: Receipt) -> int:
     count = 0
-    net_bought_item: ExchangedItem = prefilled_receipt.net_bought_items
-    # for net_bought_item in prefilled_receipt.net_bought_items:
+    net_bought_item: ExchangedItem = _get_exchanged_item(prefilled_receipt)
     for account_transaction in net_bought_item.account_transactions:
-
         count += 1
     return count

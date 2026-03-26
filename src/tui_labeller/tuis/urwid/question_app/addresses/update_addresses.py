@@ -164,22 +164,35 @@ def filter_receipts_without_address(
         A list of Receipt objects where the shop_identifier.address has at least one non-None/non-empty field.
     """
 
-    def has_valid_address(shop_id: dict) -> bool:
+    def has_valid_address(shop_id) -> bool:
         """Check if the shop_id's address has at least one non-None/non-empty
         field."""
-        # Get the address dictionary, default to empty dict if not present
-        address = shop_id.get("address", {})
-        # Ensure address is a dictionary; if not, treat as invalid
-        if not isinstance(address, dict):
+        if isinstance(shop_id, dict):
+            address = shop_id.get("address", {})
+            if not isinstance(address, dict):
+                return False
+            return any(
+                field is not None and field != ""
+                for field in (
+                    address.get("street"),
+                    address.get("house_nr"),
+                    address.get("zipcode"),
+                    address.get("city"),
+                    address.get("country"),
+                )
+            )
+        # ShopId object
+        address = getattr(shop_id, "address", None)
+        if address is None:
             return False
         return any(
             field is not None and field != ""
             for field in (
-                address.get("street"),
-                address.get("house_nr"),
-                address.get("zipcode"),
-                address.get("city"),
-                address.get("country"),
+                address.street,
+                address.house_nr,
+                address.zipcode,
+                address.city,
+                address.country,
             )
         )
 

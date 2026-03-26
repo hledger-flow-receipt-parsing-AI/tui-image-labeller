@@ -178,7 +178,7 @@ def set_first_address_question(
     original_widget = address_type_question._original_widget
 
     if isinstance(original_widget, VerticalMultipleChoiceWidget):
-        if "Select Shop Address:\n" in original_widget._caption:
+        if "Select Shop Address:" in original_widget._caption:
             original_widget.set_answer(answer)
         else:
             raise ValueError(

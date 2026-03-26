@@ -40,6 +40,10 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         self.history_suggestion_box = history_suggestion_box
         self.pile = pile
         self._in_autocomplete: bool = False
+        self._scrollable: bool = bool(
+            question_data.extra_data
+            and question_data.extra_data.get("scrollable")
+        )
         if question_data.navigation_display:
             self.navigation_display: Union[None, AttrMap] = (
                 question_data.navigation_display
@@ -184,6 +188,34 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         return False
 
     @typechecked
+    def _scroll_selection(self, direction: int) -> None:
+        """Scroll the current selection up or down within the choice list.
+
+        Args:
+            direction: -1 for up, +1 for down.
+        """
+        max_index = len(self.question_data.choices) - 1
+        if max_index < 0:
+            return
+        if self.edit_text.strip():
+            try:
+                current = int(self.edit_text)
+            except ValueError:
+                current = 0
+        else:
+            current = -1 if direction == 1 else max_index + 1
+
+        new_index = current + direction
+        if new_index < 0:
+            new_index = max_index
+        elif new_index > max_index:
+            new_index = 0
+
+        self.set_edit_text(str(new_index))
+        self.set_edit_pos(len(str(new_index)))
+        self.set_caption(self._get_batch_caption())
+
+    @typechecked
     def keypress(self, size, key):
         """Overrides the internal/urwid pip package method "keypress" to map
         incoming keys into separate behaviour."""
@@ -231,9 +263,15 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
             return None
 
         if key == "up":
+            if self._scrollable:
+                self._scroll_selection(-1)
+                return None
             return self.safely_go_to_previous_question()
 
         if key == "down":
+            if self._scrollable:
+                self._scroll_selection(1)
+                return None
             return self.safely_go_to_next_question()
 
         if key == "right":

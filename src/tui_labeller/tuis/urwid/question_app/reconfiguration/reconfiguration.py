@@ -149,7 +149,7 @@ def handle_manual_address_questions(
 ) -> "QuestionnaireApp":
     """Add or remove manual address questions based on the address selector
     answer."""
-    address_selector_question = "Select Shop Address:\n"
+    address_selector_question = "Select Shop Address:"
     address_selector_index = None
     address_selector_answer = None
 
@@ -255,7 +255,7 @@ def remove_manual_address_questions(
 ) -> "QuestionnaireApp":
     """Remove manual address questions when address selector changes to a non-
     manual address."""
-    address_selector_question = "Select Shop Address:\n"
+    address_selector_question = "Select Shop Address:"
     address_selector_answer = None
 
     # Find the address selector question and its answer
@@ -928,6 +928,15 @@ def get_configuration(
             # Re-collect after potential reconfiguration.
             preserved_answers = preserve_current_answers(tui=tui)
 
+    # Update address list whenever reconfiguration runs (e.g. after
+    # answering the category question) so the shop addresses reflect the
+    # current category immediately.
+    update_address_list(
+        tui=tui,
+        account_questions=account_questions,
+        labelled_receipts=labelled_receipts,
+    )
+
     # Background matching: try to pre-fill withdrawal amount from CSV.
     if _has_withdrawal_questions(tui=tui):
         _try_background_withdrawal_match(
@@ -1038,7 +1047,7 @@ def is_at_address_selector(*, tui: QuestionnaireApp) -> bool:
     focused_widget = tui.get_focus_widget()
 
     if isinstance(focused_widget, VerticalMultipleChoiceWidget):
-        if focused_widget.question_data.question == "Select Shop Address:\n":
+        if focused_widget.question_data.question == "Select Shop Address:":
             return True
     return False
 
@@ -1091,13 +1100,17 @@ def update_address_list(
         labelled_receipts: List of Receipt objects for generating shop choices.
     """
 
-    category = get_category(tui=tui)
+    try:
+        category = get_category(tui=tui)
+    except ValueError:
+        # Category question exists but hasn't been answered yet — skip.
+        return
     if category is None:
         # Withdrawal receipts don't have a category question — skip address
         # filtering.
         return
 
-    address_selector_question = "Select Shop Address:\n"
+    address_selector_question = "Select Shop Address:"
 
     # Find the address selector widget
     for input_widget in tui.inputs:
@@ -1111,9 +1124,11 @@ def update_address_list(
                 labelled_receipts=labelled_receipts,
                 category_input=category,
             )
-            # Update the widget's choices
+            # Update the widget's choices and shop_ids
             widget.question_data.choices = choices
-            widget.question_data.shop_ids = shop_ids
+            if widget.question_data.extra_data is None:
+                widget.question_data.extra_data = {}
+            widget.question_data.extra_data["shop_ids"] = shop_ids
             # Refresh the widget to reflect the new choices
             widget.refresh_choices()
             break

@@ -203,33 +203,37 @@ def filter_receipts_without_address(
     ]
 
 
+MAX_ADDRESS_CHOICES = 12
+
+
 @typechecked
 def get_initial_complete_list(
     *, labelled_receipts: List[Receipt], category_input: Optional[str] = None
 ) -> Tuple[List[str], List[ShopId]]:
-    """Generate a list of shop choices with starred entries for the specified
-    category, followed by non-starred entries, with 'manual address' at the
-    top.
+    """Generate a hierarchically sorted list of shop address choices.
+
+    Sorting order (all groups sorted by frequency descending):
+      1. "manual address" always at index 0.
+      2. Exact or sub-category matches (category starts with category_input).
+      3. Parent-category matches (shares the top-level prefix).
+      4. All remaining addresses.
+
+    At most MAX_ADDRESS_CHOICES entries are returned (including manual
+    address), so up to 11 historical addresses.
 
     Args:
         labelled_receipts: List of Receipt objects.
-        category_input: Category to prioritize (e.g., 'groceries'). If None, no starring.
+        category_input: Category to prioritize (e.g., 'groceries:ah').
+            If None, all addresses sorted by frequency.
 
     Returns:
-        Tuple[List[str], List[ShopId]]: A tuple containing the list of choice strings
-        (with stars for matching category) and the corresponding list of ShopId objects.
-
-    Raises:
-        ValueError: If labelled_receipts list is empty.
+        Tuple of (choice strings, ShopId objects).
     """
-    # if not labelled_receipts:
-    #     raise ValueError("Receipts list cannot be empty")
-
     labelled_receipts_with_addresses: List[Receipt] = (
         filter_receipts_without_address(labelled_receipts=labelled_receipts)
     )
 
-    # Get category-to-shop-id mapping with counts
+    # Get category-to-shop-id mapping with counts.
     previous_shop_ids: Dict[str, List[Tuple[int, ShopId]]] = (
         get_relevant_shop_ids(
             labelled_receipts=labelled_receipts_with_addresses,
@@ -237,59 +241,73 @@ def get_initial_complete_list(
         )
     )
 
-    # Collect all unique shop IDs with their highest score and associated category
-    shop_info: Dict[
-        Tuple[str, str, Optional[str]], Tuple[int, ShopId, List[str]]
-    ] = {}
+    # Collect unique shop IDs with total frequency and associated categories.
+    shop_freq: Dict[Tuple[str, str, str], int] = {}
+    shop_obj: Dict[Tuple[str, str, str], ShopId] = {}
+    shop_cats: Dict[Tuple[str, str, str], List[str]] = {}
+
     for category, tuples in previous_shop_ids.items():
-        for score, shop_id in tuples:
+        for count, shop_id in tuples:
             shop_key = (
                 shop_id.name,
                 shop_id.address.to_string(),
                 shop_id.shop_account_nr or "",
             )
-            if shop_key not in shop_info or score > shop_info[shop_key][0]:
-                # Store the highest score, shop_id, and list of associated categories
-                shop_info[shop_key] = (score, shop_id, [category])
-            elif shop_key in shop_info and score == shop_info[shop_key][0]:
-                # Add category to existing entry if score is equal
-                shop_info[shop_key][2].append(category)
+            shop_freq[shop_key] = shop_freq.get(shop_key, 0) + count
+            shop_obj[shop_key] = shop_id
+            if shop_key not in shop_cats:
+                shop_cats[shop_key] = []
+            if category not in shop_cats[shop_key]:
+                shop_cats[shop_key].append(category)
 
-    # Separate shops into starred (matching category_input) and non-starred groups
-    starred_shops: List[Tuple[int, ShopId, List[str]]] = []
-    non_starred_shops: List[Tuple[int, ShopId, List[str]]] = []
+    def freq_sort_key(
+        shop_key: Tuple[str, str, str],
+    ) -> Tuple[int, str]:
+        return (-shop_freq[shop_key], shop_key[0])
 
-    for shop_key, (score, shop_id, categories) in shop_info.items():
-        entry = (score, shop_id, categories)
-        if category_input and category_input in categories:
-            starred_shops.append(entry)
-        else:
-            non_starred_shops.append(entry)
+    # Partition into tiers based on category_input.
+    exact_or_sub: List[Tuple[str, str, str]] = []
+    parent_match: List[Tuple[str, str, str]] = []
+    rest: List[Tuple[str, str, str]] = []
 
-    # Sort both groups by score (descending) and name (alphabetically)
-    def sort_key(entry: Tuple[int, ShopId, List[str]]) -> Tuple[int, str]:
-        return (-entry[0], entry[1].name)
+    if category_input:
+        # Parent prefix: e.g. "groceries:" from "groceries:ah"
+        parent_prefix = (
+            category_input.split(":")[0] + ":"
+            if ":" in category_input
+            else category_input + ":"
+        )
 
-    starred_shops.sort(key=sort_key)
-    non_starred_shops.sort(key=sort_key)
+        for shop_key in shop_cats:
+            categories = shop_cats[shop_key]
+            if any(cat.startswith(category_input) for cat in categories):
+                exact_or_sub.append(shop_key)
+            elif any(cat.startswith(parent_prefix) for cat in categories):
+                parent_match.append(shop_key)
+            else:
+                rest.append(shop_key)
+    else:
+        rest = list(shop_cats.keys())
 
-    # Create choice strings and shop_ids list
+    exact_or_sub.sort(key=freq_sort_key)
+    parent_match.sort(key=freq_sort_key)
+    rest.sort(key=freq_sort_key)
+
+    # Build result: manual address + up to 11 historical addresses.
     choices: List[str] = ["manual address"]
     shop_ids: List[ShopId] = [
         ShopId(name="manual address", address=Address())
-    ]  # Placeholder ShopId
+    ]
 
-    # Add starred shops (with * prefix)
-    for score, shop_id, _ in starred_shops:
-        choice_str = f"*{shop_id.name}: {shop_id.address.to_string()}"
-
-        choices.append(choice_str)
-        shop_ids.append(shop_id)
-
-    # Add non-starred shops
-    for score, shop_id, _ in non_starred_shops:
-        choice_str = f"{shop_id.name}: {shop_id.address.to_string()}"
-        choices.append(choice_str)
-        shop_ids.append(shop_id)
+    seen: set = set()
+    for shop_key in exact_or_sub + parent_match + rest:
+        if len(choices) >= MAX_ADDRESS_CHOICES:
+            break
+        if shop_key in seen:
+            continue
+        seen.add(shop_key)
+        sid = shop_obj[shop_key]
+        choices.append(f"{sid.name}: {sid.address.to_string()}")
+        shop_ids.append(sid)
 
     return choices, shop_ids

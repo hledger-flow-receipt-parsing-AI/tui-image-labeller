@@ -40,9 +40,9 @@ class OptionalQuestions:
         # Base questions excluding manual address questions
         return [
             VerticalMultipleChoiceQuestionData(
-                question="Select Shop Address:\n",
+                question="Select Shop Address:",
                 choices=choices,
-                nr_of_ans_per_batch=8,
+                nr_of_ans_per_batch=12,
                 ans_required=True,
                 reconfigurer=True,
                 terminator=False,
@@ -54,20 +54,19 @@ class OptionalQuestions:
                             urwid.Text(("navigation", "Navigation")),
                             urwid.Text("Q          - quit"),
                             urwid.Text(
-                                "\n<- Left, Right -> - Show next batch of"
-                                " answers."
+                                "Up/Down    - scroll through addresses"
                             ),
                             urwid.Text(
-                                "\nType a number to select that answer."
+                                "Type a number to select that answer."
                             ),
                             urwid.Text(
-                                "\nEnter confirm choice, goto next question."
+                                "Enter      - confirm choice, goto next question."
                             ),
                         ]
                     ),
                     "normal",
                 ),
-                extra_data={"shop_ids": shop_ids},
+                extra_data={"shop_ids": shop_ids, "scrollable": True},
             ),
             InputValidationQuestionData(
                 question="\nSubtotal (Optional, press enter to skip):\n",

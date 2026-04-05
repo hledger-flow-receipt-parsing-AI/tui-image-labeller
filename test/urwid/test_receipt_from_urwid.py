@@ -5,11 +5,11 @@ from typing import List, Tuple, Union
 
 import pytest
 import urwid
-from hledger_preprocessor.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
     HledgerFlowAccountInfo,
 )
-from hledger_preprocessor.TransactionObjects.ExchangedItem import ExchangedItem
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
+from hledger_core.TransactionObjects.ExchangedItem import ExchangedItem
+from hledger_core.TransactionObjects.Receipt import Receipt
 
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
     DateTimeQuestion,

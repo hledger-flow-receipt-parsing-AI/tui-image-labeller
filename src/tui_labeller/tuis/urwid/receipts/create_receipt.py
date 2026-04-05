@@ -2,17 +2,17 @@ from datetime import datetime
 from pprint import pprint
 from typing import Any, List, Optional, Tuple, Union
 
-from hledger_preprocessor.config.load_config import Config
-from hledger_preprocessor.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_config.config.load_config import Config
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
     HledgerFlowAccountInfo,
 )
-from hledger_preprocessor.TransactionObjects.Address import Address
-from hledger_preprocessor.TransactionObjects.ExchangedItem import ExchangedItem
-from hledger_preprocessor.TransactionObjects.Receipt import (
+from hledger_core.TransactionObjects.Address import Address
+from hledger_core.TransactionObjects.ExchangedItem import ExchangedItem
+from hledger_core.TransactionObjects.Receipt import (
     Receipt,
     WithdrawalMetadata,
 )
-from hledger_preprocessor.TransactionObjects.ShopId import ShopId
+from hledger_core.TransactionObjects.ShopId import ShopId
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (

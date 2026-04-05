@@ -1,7 +1,7 @@
 from typing import List, Union
 
 import urwid
-from hledger_preprocessor.Currency import Currency
+from hledger_core.Currency import Currency
 from typeguard import typechecked
 from urwid import AttrMap
 

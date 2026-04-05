@@ -5,8 +5,8 @@ import os
 from argparse import ArgumentParser, Namespace
 from typing import List, Tuple
 
-from hledger_preprocessor.dir_reading_and_writing import assert_dir_exists
-from hledger_preprocessor.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_config.dir_reading_and_writing import assert_dir_exists
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
     HledgerFlowAccountInfo,
 )
 from typeguard import typechecked

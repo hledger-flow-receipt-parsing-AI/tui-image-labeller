@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Dict, Union
 
-from hledger_preprocessor.TransactionObjects.ExchangedItem import ExchangedItem
+from hledger_core.TransactionObjects.ExchangedItem import ExchangedItem
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (

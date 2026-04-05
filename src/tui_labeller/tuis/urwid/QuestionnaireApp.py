@@ -3,7 +3,7 @@ import os
 from typing import Any, List, Optional, Union
 
 import urwid
-from hledger_preprocessor.TransactionObjects.Receipt import (  # For image handling
+from hledger_core.TransactionObjects.Receipt import (  # For image handling
     Receipt,
 )
 from typeguard import typechecked

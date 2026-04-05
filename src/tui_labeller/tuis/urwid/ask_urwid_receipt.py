@@ -2,13 +2,13 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
 
 import urwid
-from hledger_preprocessor.config.AccountConfig import AccountConfig
-from hledger_preprocessor.config.load_config import Config
-from hledger_preprocessor.generics.Transaction import Transaction
-from hledger_preprocessor.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_config.config.AccountConfig import AccountConfig
+from hledger_config.config.load_config import Config
+from hledger_core.generics.Transaction import Transaction
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
     HledgerFlowAccountInfo,
 )
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
+from hledger_core.TransactionObjects.Receipt import Receipt
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (

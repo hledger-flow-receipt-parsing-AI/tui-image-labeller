@@ -1,6 +1,6 @@
 from typing import List, Union
 
-from hledger_preprocessor.TransactionObjects.Receipt import (
+from hledger_core.TransactionObjects.Receipt import (
     Receipt,
 )
 from typeguard import typechecked

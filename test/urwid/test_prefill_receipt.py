@@ -1,10 +1,10 @@
 import json
 
 import pytest
-from hledger_preprocessor.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
     HledgerFlowAccountInfo,
 )
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
+from hledger_core.TransactionObjects.Receipt import Receipt
 
 from tui_labeller.tuis.urwid.ask_urwid_receipt import build_receipt_from_urwid
 

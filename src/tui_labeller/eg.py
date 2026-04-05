@@ -2,22 +2,22 @@ import json
 from copy import deepcopy
 from pprint import pprint
 
-from hledger_preprocessor.load_config import Config, load_config
-from hledger_preprocessor.management.get_all_hledger_flow_accounts import (
+from hledger_config.config.load_config import Config, load_config
+from hledger_receipt_processing.management.get_all_hledger_flow_accounts import (
     get_all_accounts,
 )
-from hledger_preprocessor.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
     HledgerFlowAccountInfo,
 )
 
 # from tui_labeller.tuis.urwid.QuestionnaireApp import QuestionnaireApp
-from hledger_preprocessor.receipts_to_objects.get_asset_categories import (
+from hledger_receipt_processing.receipts_to_objects.get_asset_categories import (
     get_hledger_pure_accounts_without_csv,
 )
-from hledger_preprocessor.TransactionObjects.AccountTransaction import (
+from hledger_core.TransactionObjects.AccountTransaction import (
     AccountTransaction,
 )
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
+from hledger_core.TransactionObjects.Receipt import Receipt
 
 from tui_labeller.tuis.urwid.ask_urwid_receipt import build_receipt_from_urwid
 

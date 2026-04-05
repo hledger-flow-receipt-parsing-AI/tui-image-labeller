@@ -1,6 +1,6 @@
 from typing import Optional
 
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
+from hledger_core.TransactionObjects.Receipt import Receipt
 from typeguard import typechecked
 from urwid import AttrMap
 

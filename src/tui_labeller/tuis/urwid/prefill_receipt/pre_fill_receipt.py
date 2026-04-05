@@ -1,7 +1,7 @@
 from typing import Any, List, Tuple, Union
 
-from hledger_preprocessor.config.load_config import Config
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
+from hledger_config.config.load_config import Config
+from hledger_core.TransactionObjects.Receipt import Receipt
 from typeguard import typechecked
 from urwid import AttrMap
 

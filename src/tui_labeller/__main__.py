@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 
-from hledger_preprocessor.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
     HledgerFlowAccountInfo,
 )
 

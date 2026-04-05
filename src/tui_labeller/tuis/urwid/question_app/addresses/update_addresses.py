@@ -1,9 +1,9 @@
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
 
-from hledger_preprocessor.TransactionObjects.Address import Address
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
-from hledger_preprocessor.TransactionObjects.ShopId import ShopId
+from hledger_core.TransactionObjects.Address import Address
+from hledger_core.TransactionObjects.Receipt import Receipt
+from hledger_core.TransactionObjects.ShopId import ShopId
 from typeguard import typechecked
 
 

@@ -1,18 +1,18 @@
 from datetime import datetime
 from typing import List, Optional, Tuple, Union
 
-from hledger_preprocessor.config.AccountConfig import AccountConfig
-from hledger_preprocessor.config.load_config import Config
-from hledger_preprocessor.Currency import Currency
-from hledger_preprocessor.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_config.config.AccountConfig import AccountConfig
+from hledger_config.config.load_config import Config
+from hledger_core.Currency import Currency
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
     HledgerFlowAccountInfo,
 )
-from hledger_preprocessor.TransactionObjects.Account import Account
-from hledger_preprocessor.TransactionObjects.AccountTransaction import (
+from hledger_core.TransactionObjects.Account import Account
+from hledger_core.TransactionObjects.AccountTransaction import (
     AccountTransaction,
 )
-from hledger_preprocessor.TransactionObjects.ExchangedItem import ExchangedItem
-from hledger_preprocessor.TransactionObjects.Receipt import WithdrawalMetadata
+from hledger_core.TransactionObjects.ExchangedItem import ExchangedItem
+from hledger_core.TransactionObjects.Receipt import WithdrawalMetadata
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (

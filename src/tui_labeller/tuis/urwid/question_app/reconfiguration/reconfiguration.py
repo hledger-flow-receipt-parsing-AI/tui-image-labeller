@@ -2,10 +2,10 @@ import logging
 from datetime import timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from hledger_preprocessor.config.AccountConfig import AccountConfig
-from hledger_preprocessor.config.load_config import Config
-from hledger_preprocessor.generics.Transaction import Transaction
-from hledger_preprocessor.TransactionObjects.Receipt import (
+from hledger_config.config.AccountConfig import AccountConfig
+from hledger_config.config.load_config import Config
+from hledger_core.generics.Transaction import Transaction
+from hledger_core.TransactionObjects.Receipt import (
     Receipt,
     WithdrawalMetadata,
 )
@@ -736,7 +736,7 @@ def _try_background_withdrawal_match(
     if config is None or csv_transactions_per_account is None:
         return
 
-    from hledger_preprocessor.matching.helper import (
+    from hledger_receipt_processing.matching.helper import (
         get_transactions_in_date_range,
     )
 

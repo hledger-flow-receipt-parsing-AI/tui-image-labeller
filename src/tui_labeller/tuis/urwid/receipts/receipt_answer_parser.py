@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Dict, Union
 
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
+from hledger_core.TransactionObjects.Receipt import Receipt
 from typeguard import typechecked
 
 from tui_labeller.target_objects import Receipt

@@ -1,7 +1,7 @@
 from typing import List, Union
 
 import urwid
-from hledger_preprocessor.Currency import Currency
+from hledger_core.Currency import Currency
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType

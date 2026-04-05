@@ -1,8 +1,8 @@
 from typing import List, Optional
 
-from hledger_preprocessor.config.load_config import Config
-from hledger_preprocessor.TransactionObjects.ExchangedItem import ExchangedItem
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
+from hledger_config.config.load_config import Config
+from hledger_core.TransactionObjects.ExchangedItem import ExchangedItem
+from hledger_core.TransactionObjects.Receipt import Receipt
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.receipts.AccountQuestions import AccountQuestions

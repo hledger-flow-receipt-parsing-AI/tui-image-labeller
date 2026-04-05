@@ -1,8 +1,8 @@
 from typing import List, Optional
 
 import urwid
-from hledger_preprocessor.TransactionObjects.Receipt import Receipt
-from hledger_preprocessor.TransactionObjects.ShopId import ShopId
+from hledger_core.TransactionObjects.Receipt import Receipt
+from hledger_core.TransactionObjects.ShopId import ShopId
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType

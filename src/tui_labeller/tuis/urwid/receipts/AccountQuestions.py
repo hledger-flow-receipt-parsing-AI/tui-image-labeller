@@ -56,7 +56,7 @@ class AccountQuestions:
             VerticalMultipleChoiceQuestionData(
                 question="Belongs to bank/accounts_without_csv:",
                 ans_required=True,
-                reconfigurer=False,
+                reconfigurer=True,
                 terminator=False,
                 choices=self.belongs_to_options,
                 ai_suggestions=[
@@ -81,16 +81,16 @@ class AccountQuestions:
                     urwid.Pile(
                         [
                             urwid.Text(("navigation", "Navigation")),
-                            urwid.Text(f"Q          - quit"),
+                            urwid.Text("Q          - quit"),
                             urwid.Text(
-                                f"\n<- Left, Right -> - Show next batch of"
-                                f" answers."
+                                "\n<- Left, Right -> - Show next batch of"
+                                " answers."
                             ),
                             urwid.Text(
-                                f"\nType a number to select that answer."
+                                "\nType a number to select that answer."
                             ),
                             urwid.Text(
-                                f"\nEnter confirm choice, goto next question."
+                                "\nEnter confirm choice, goto next question."
                             ),
                         ]
                     ),

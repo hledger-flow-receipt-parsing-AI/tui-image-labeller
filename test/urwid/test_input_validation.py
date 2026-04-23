@@ -143,7 +143,8 @@ def test_wildcard_at_end(app):
 #     the_question.keypress(1, "d")
 #     the_question.keypress(1, "*")
 #     the_question.keypress(1, "o")
-#     assert_autocomplete_options(the_question=the_question, ["avocado", "ado"], step="a*d*o")
+# assert_autocomplete_options(the_question=the_question, ["avocado",
+# "ado"], step="a*d*o")
 
 
 # TODO: determine why this test does not recognise the autocomplete field
@@ -152,5 +153,5 @@ def test_wildcard_at_end(app):
 #     the_question = app.inputs[0]
 #     # No keypress, just initial state
 #     assert_autocomplete_options(
-#         the_question=the_question, expected_options=["apple", "apricot", "avocado"], step="entering nothing"
+#         the_question=the_question, expected_options=["apple", "apricot", "avocado"], step="entering nothing"  # noqa: E501
 #     )

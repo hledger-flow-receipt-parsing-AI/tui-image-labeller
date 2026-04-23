@@ -12,6 +12,9 @@ from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.input_validation.InputValidationQuestion import (
     InputValidationQuestion,
 )
+from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (  # noqa: E501
+    HorizontalMultipleChoiceWidget,
+)
 from tui_labeller.tuis.urwid.prefill_receipt.helper import (
     generate_current_questions,
     get_number_of_account_transactions,
@@ -19,13 +22,10 @@ from tui_labeller.tuis.urwid.prefill_receipt.helper import (
 from tui_labeller.tuis.urwid.prefill_receipt.set_address import (
     set_address_questions,
 )
-from tui_labeller.tuis.urwid.question_app.reconfiguration.pre_filling_receipt_answers0 import (
+from tui_labeller.tuis.urwid.question_app.reconfiguration.pre_filling_receipt_answers0 import (  # noqa: E501
     answer_prefilled_account_questions,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (
-    HorizontalMultipleChoiceWidget,
-)
-from tui_labeller.tuis.urwid.question_app.reconfiguration.reconfiguration import (
+from tui_labeller.tuis.urwid.question_app.reconfiguration.reconfiguration import (  # noqa: E501
     WITHDRAWAL_TOGGLE_QUESTION,
     preserve_current_answers,
 )
@@ -57,7 +57,7 @@ def apply_prefilled_receipt(
             accounts_without_csv=accounts_without_csv,
         )
 
-        # TODO: add call to update the address_question using the entered category.
+        # TODO: add call to update the address_question using the entered category.  # noqa: E501
         # Update the address selector with the selected category.
         third_tui: QuestionnaireApp = set_address_questions(
             tui=new_tui, prefilled_receipt=prefilled_receipt
@@ -78,7 +78,8 @@ def _set_withdrawal_toggle(
     tui: QuestionnaireApp,
     prefilled_receipt: Receipt,
 ) -> None:
-    """Set the withdrawal toggle to 'y' if the receipt has withdrawal_metadata."""
+    """Set the withdrawal toggle to 'y' if the receipt has
+    withdrawal_metadata."""
     has_metadata = prefilled_receipt.withdrawal_metadata is not None
     for input_widget in tui.inputs:
         widget = input_widget.base_widget
@@ -184,10 +185,12 @@ def set_account_questions(
             accounts_without_csv=accounts_without_csv,
         )
     )
-    # TODO: Remove current AccountQuestions from the preserve_current_answers function, because in this case they are not useful.
+    # TODO: Remove current AccountQuestions from the preserve_current_answers
+    # function, because in this case they are not useful.
     pre_filled_accounts_questions.append(pre_filled_accounts_questions[0])
 
-    # In the context of creating the pre-filled receipt, only the first 2 answers are set above, get them.
+    # In the context of creating the pre-filled receipt, only the first 2
+    # answers are set above, get them.
     prefilled_answers_to_base_questions: List[Union[None, Tuple[str, Any]]] = (
         preserve_current_answers(tui=tui)
     )

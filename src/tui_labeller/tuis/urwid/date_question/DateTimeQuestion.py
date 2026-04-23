@@ -302,8 +302,9 @@ class DateTimeQuestion(urwid.Edit):
         datetime object.
 
         Returns:
-            Union[str, datetime]: The current date/time value. Returns a string if any value is None,
-                                otherwise returns a datetime object.
+            Union[str, datetime]: The current date/time value.
+                Returns a string if any value is None,
+                otherwise returns a datetime object.
         """
         # Check if any values are None
         if any(v is None for v in self.date_values) or (
@@ -336,8 +337,8 @@ class DateTimeQuestion(urwid.Edit):
         """Checks if a valid answer can be obtained without errors.
 
         Returns:
-            bool: True if get_answer() would return a valid result without raising an error,
-                False otherwise.
+            bool: True if get_answer() would return a valid result
+                without raising an error, False otherwise.
         """
         try:
             self.get_answer()
@@ -350,11 +351,12 @@ class DateTimeQuestion(urwid.Edit):
         """Sets the date/time value from either a string or datetime object.
 
         Args:
-            value: The date/time value to set. Can be a string in the format 'YYYY-MM-DD'
-                (for date_only) or 'YYYY-MM-DD HH:MM' (for date and time), or a datetime object.
+            value: The date/time value to set. Can be a string
+                in 'YYYY-MM-DD' (date_only) or 'YYYY-MM-DD HH:MM'
+                format, or a datetime object.
 
         Raises:
-            ValueError: If the input string format is invalid or cannot be parsed into a valid date/time.
+            ValueError: If the input string format is invalid.
         """
         if isinstance(value, datetime):
             self.date_values = [value.year, value.month, value.day]

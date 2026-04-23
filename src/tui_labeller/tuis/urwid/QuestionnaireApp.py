@@ -10,10 +10,10 @@ from typeguard import typechecked
 from urwid import AttrMap
 
 from tui_labeller.file_read_write_helper import write_to_file
-from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (  # noqa: E501
     HorizontalMultipleChoiceWidget,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (  # noqa: E501
     VerticalMultipleChoiceWidget,
 )
 from tui_labeller.tuis.urwid.question_app.build_questionnaire import (
@@ -71,22 +71,25 @@ class QuestionnaireApp:
         self.pile = urwid.Pile([])
         self.history_store = (
             {}
-        )  # New: Dictionary to store history suggestions {question_id: [suggestions]}
+            # New: Dictionary to store history suggestions {question_id:
+            # [suggestions]}
+        )
 
         # Setup UI elements
+        indent = self.indentation_spaces * " "
         self.ai_suggestion_box: AttrMap = urwid.AttrMap(
             urwid.Text(
                 [
                     ("ai_suggestions", "AI Suggestions:\n"),
                     (
                         "normal",
-                        f"{self.indentation_spaces*" "}AI Suggestion 1\n",
+                        f"{indent}AI Suggestion 1\n",
                     ),
                     (
                         "normal",
-                        f"{self.indentation_spaces*" "}AI Suggestion 2\n",
+                        f"{indent}AI Suggestion 2\n",
                     ),
-                    ("normal", f"{self.indentation_spaces*" "}AI Suggestion 3"),
+                    ("normal", f"{indent}AI Suggestion 3"),
                 ]
             ),
             "ai_suggestions",
@@ -97,11 +100,11 @@ class QuestionnaireApp:
                     ("history_suggestions", "History Suggestions:\n"),
                     (
                         "normal",
-                        f"{self.indentation_spaces*" "}History Option 2\n",
+                        f"{indent}History Option 2\n",
                     ),
                     (
                         "normal",
-                        f"{self.indentation_spaces*" "}History Option 3",
+                        f"{indent}History Option 3",
                     ),
                 ]
             ),
@@ -111,7 +114,7 @@ class QuestionnaireApp:
             urwid.Pile(
                 [
                     urwid.Text(("normal", "Input Error(s)")),
-                    urwid.Text(("error", f"{self.indentation_spaces*" "}None")),
+                    urwid.Text(("error", f"{indent}None")),
                 ]
             ),
             "",
@@ -120,9 +123,7 @@ class QuestionnaireApp:
             urwid.Pile(
                 [
                     urwid.Text(("navigation", "Navigation")),
-                    urwid.Text(
-                        f"{self.indentation_spaces*" "}Q          - quit"
-                    ),
+                    urwid.Text(f"{indent}Q          - quit"),
                     urwid.Text(
                         f"{self.indentation_spaces*' '}Shift+tab  - previous"
                         " question"
@@ -211,14 +212,16 @@ class QuestionnaireApp:
                 0 if current_pos == nr_of_questions - 1 else current_pos + 1
             )
             self.pile.focus_position = next_pos
-            # self.pile.focus_position = next_pos + self.nr_of_headers # TODO: verify if this should be used instead.
+            # TODO: verify if this should be used instead:
+            # self.pile.focus_position = next_pos + self.nr_of_headers
 
         elif key == "up":
             next_pos = (
                 nr_of_questions - 1 if current_pos == 0 else current_pos - 1
             )
             self.pile.focus_position = next_pos
-            # self.pile.focus_position = next_pos + self.nr_of_headers # TODO: verify if this should be used instead.
+            # TODO: verify if this should be used instead:
+            # self.pile.focus_position = next_pos + self.nr_of_headers
         else:
             raise ValueError(
                 f"Unexpected key={key}, current_pos={current_pos}."
@@ -329,12 +332,11 @@ class QuestionnaireApp:
 
         if isinstance(focused_widget, VerticalMultipleChoiceWidget):
             log("FOUND QUESTION")
-            log(
-                f"focused_widget.navigation_display={focused_widget.navigation_display}"
-            )
+            nav = focused_widget.navigation_display
+            log(f"focused_widget.navigation_display={nav}")
             if focused_widget.navigation_display:
                 updated_pile = focused_widget.navigation_display
 
                 self.navigation_display.original_widget = updated_pile
 
-                log(f"\n\nUpdated navigation_display content.")
+                log("\n\nUpdated navigation_display content.")

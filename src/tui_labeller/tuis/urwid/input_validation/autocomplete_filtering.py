@@ -8,7 +8,7 @@ def get_filtered_suggestions(
     *, input_text: str, available_suggestions: List[str]
 ) -> List[str]:
     """
-    Filter suggestions based on input text, matching from start with wildcard support.
+    Filter suggestions based on input text, matching from start with wildcard support.  # noqa: E501
     Special case: '*' alone shows all available suggestions.
 
     Args:

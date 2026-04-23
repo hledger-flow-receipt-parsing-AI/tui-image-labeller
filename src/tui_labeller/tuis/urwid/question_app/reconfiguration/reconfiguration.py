@@ -1,7 +1,9 @@
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import urwid
 from hledger_config.config.AccountConfig import AccountConfig
 from hledger_config.config.load_config import Config
 from hledger_core.generics.Transaction import Transaction
@@ -59,6 +61,27 @@ from tui_labeller.tuis.urwid.receipts.OptionalQuestions import (  # noqa: E402
 from tui_labeller.tuis.urwid.receipts.WithdrawalQuestions import (  # noqa: E402
     WithdrawalQuestions,
 )
+
+DATE_RANGE_ERROR_ID = "__date_range_error__"
+MATCH_CHOICE_QUESTION = "No unique CSV match. Select action:"
+
+
+@dataclass
+class DateRangeResult:
+    """Result of comparing receipt date to CSV date bounds."""
+
+    status: str  # "ok", "too_early", "too_late", "no_data"
+    csv_min: Optional[datetime] = None
+    csv_max: Optional[datetime] = None
+
+
+@dataclass
+class AmountMatchResult:
+    """Result of matching receipt amount against CSV transactions."""
+
+    status: str  # "matched", "no_match", "ambiguous", "skipped"
+    candidate_count: int = 0
+    candidates: List[Transaction] = field(default_factory=list)
 
 
 @typechecked
@@ -923,14 +946,17 @@ def _validate_account_date_range(
     csv_transactions_per_account: Optional[
         Dict[AccountConfig, Dict[int, List[Transaction]]]
     ],
-) -> None:
-    """Flag the account widget red if its CSV has no transactions for the
-    receipt date's year.
+) -> Optional[DateRangeResult]:
+    """Check whether the selected account's CSV covers the receipt date.
 
-    Asset accounts (no CSV) are skipped.
+    Computes the actual min/max transaction dates across all years. Sets
+    the account widget red on error, normal on success. Updates the
+    sidebar error_display with a directional message.
+
+    Returns a DateRangeResult (or None if validation was skipped).
     """
     if csv_transactions_per_account is None:
-        return
+        return None
 
     receipt_date = None
     account_str: Optional[str] = None
@@ -946,20 +972,106 @@ def _validate_account_date_range(
             account_inp = inp
 
     if receipt_date is None or account_str is None or account_inp is None:
-        return
+        return None
 
     # Find matching AccountConfig.
     for ac, txns_per_year in csv_transactions_per_account.items():
         if ac.account.to_string() == account_str:
-            year = receipt_date.year
-            if year in txns_per_year and txns_per_year[year]:
-                account_inp.set_attr_map({None: "normal"})
-            else:
+            # Flatten all transactions to find actual min/max dates.
+            all_txns = [
+                t for year_list in txns_per_year.values() for t in year_list
+            ]
+            if not all_txns:
                 account_inp.set_attr_map({None: "error"})
-            return
+                result = DateRangeResult(status="no_data")
+                _update_date_range_sidebar(
+                    tui=tui, result=result, receipt_date=receipt_date
+                )
+                return result
 
-    # Account not in csv_transactions_per_account → asset account, no
-    # validation needed.
+            csv_min = min(t.the_date for t in all_txns)
+            csv_max = max(t.the_date for t in all_txns)
+
+            if receipt_date.date() > csv_max.date():
+                account_inp.set_attr_map({None: "error"})
+                result = DateRangeResult(
+                    status="too_late",
+                    csv_min=csv_min,
+                    csv_max=csv_max,
+                )
+                _update_date_range_sidebar(
+                    tui=tui,
+                    result=result,
+                    receipt_date=receipt_date,
+                )
+                return result
+
+            if receipt_date.date() < csv_min.date():
+                account_inp.set_attr_map({None: "error"})
+                result = DateRangeResult(
+                    status="too_early",
+                    csv_min=csv_min,
+                    csv_max=csv_max,
+                )
+                _update_date_range_sidebar(
+                    tui=tui,
+                    result=result,
+                    receipt_date=receipt_date,
+                )
+                return result
+
+            # Date is within CSV range.
+            account_inp.set_attr_map({None: "normal"})
+            _clear_date_range_sidebar(tui=tui)
+            return DateRangeResult(
+                status="ok",
+                csv_min=csv_min,
+                csv_max=csv_max,
+            )
+
+    # Account not in csv_transactions_per_account -> asset account.
+    _clear_date_range_sidebar(tui=tui)
+    return None
+
+
+def _update_date_range_sidebar(
+    *,
+    tui: "QuestionnaireApp",
+    result: "DateRangeResult",
+    receipt_date: datetime,
+) -> None:
+    """Show a directional date-range error in the sidebar error panel."""
+    indent = tui.indentation_spaces * " "
+    if result.status == "no_data":
+        msg = "No CSV transactions for this account."
+    elif result.status == "too_late":
+        assert result.csv_max is not None
+        days = (receipt_date.date() - result.csv_max.date()).days
+        msg = (
+            f"CSV ends at {result.csv_max:%Y-%m-%d}.\n"
+            f"{indent}Receipt date is {days} day(s) later.\n"
+            f"{indent}Update the CSV or correct the date."
+        )
+    elif result.status == "too_early":
+        assert result.csv_min is not None
+        days = (result.csv_min.date() - receipt_date.date()).days
+        msg = (
+            f"CSV starts at {result.csv_min:%Y-%m-%d}.\n"
+            f"{indent}Receipt date is {days} day(s) earlier.\n"
+            f"{indent}Update the CSV or correct the date."
+        )
+    else:
+        return
+    # error_display is an AttrMap wrapping a Pile of [header_text, msg_text].
+    tui.error_display.base_widget.contents[1][0].set_text(("error", msg))
+
+
+def _clear_date_range_sidebar(*, tui: "QuestionnaireApp") -> None:
+    """Clear any date-range error from the sidebar error panel."""
+    indent = tui.indentation_spaces * " "
+    tui.error_display.base_widget.contents[1][0].set_text(
+        ("error", f"{indent}None")
+    )
 
 
 def _try_non_withdrawal_amount_match(
@@ -969,17 +1081,19 @@ def _try_non_withdrawal_amount_match(
     csv_transactions_per_account: Optional[
         Dict[AccountConfig, Dict[int, List[Transaction]]]
     ],
-) -> None:
+) -> Optional[AmountMatchResult]:
     """After 'Add another account = n', check if the entered amount matches a
     CSV transaction.
 
     Turns amount/change fields green on match, red on mismatch.  Only
     applies to non-withdrawal receipts with CSV-backed accounts.
+
+    Returns an AmountMatchResult, or None when matching is skipped.
     """
     if config is None or csv_transactions_per_account is None:
-        return
+        return None
     if _has_withdrawal_questions(tui=tui):
-        return
+        return None
 
     receipt_date = None
     account_str: Optional[str] = None
@@ -1014,7 +1128,7 @@ def _try_non_withdrawal_amount_match(
         or amount_paid is None
         or amount_inp is None
     ):
-        return
+        return None
 
     if change_returned is None:
         change_returned = 0.0
@@ -1027,13 +1141,13 @@ def _try_non_withdrawal_amount_match(
             break
 
     if matching_ac is None:
-        # Asset account without CSV — skip matching.
-        return
+        # Asset account without CSV -- skip matching.
+        return None
 
     txns_per_year = csv_transactions_per_account.get(matching_ac, {})
     if not txns_per_year:
         amount_inp.set_attr_map({None: "error"})
-        return
+        return AmountMatchResult(status="no_match", candidate_count=0)
 
     day_margin = (
         config.matching_algo.days if hasattr(config, "matching_algo") else 7
@@ -1062,21 +1176,180 @@ def _try_non_withdrawal_amount_match(
         candidates = narrowed
 
     if len(candidates) == 1:
-        # Unique match — green.
+        # Unique match -- green.
         amount_inp.set_attr_map({None: "matched"})
         if change_inp is not None:
             change_inp.set_attr_map({None: "matched"})
-        logger.info("Amount match: %.2f matched CSV transaction", net_amount)
-    else:
-        # No match or ambiguous — red.
-        amount_inp.set_attr_map({None: "error"})
-        if change_inp is not None:
-            change_inp.set_attr_map({None: "error"})
+        _remove_match_choice(tui=tui)
         logger.info(
-            "Amount match: %.2f did not uniquely match (%d candidates)",
+            "Amount match: %.2f matched CSV transaction",
             net_amount,
-            len(candidates),
         )
+        return AmountMatchResult(
+            status="matched",
+            candidate_count=1,
+            candidates=candidates,
+        )
+
+    # No match or ambiguous -- red.
+    amount_inp.set_attr_map({None: "error"})
+    if change_inp is not None:
+        change_inp.set_attr_map({None: "error"})
+
+    status = "ambiguous" if len(candidates) > 1 else "no_match"
+    logger.info(
+        "Amount match: %.2f did not uniquely match (%d candidates)",
+        net_amount,
+        len(candidates),
+    )
+
+    # Inject the match choice widget if not already present.
+    _inject_match_choice(tui=tui, candidate_count=len(candidates))
+
+    return AmountMatchResult(
+        status=status,
+        candidate_count=len(candidates),
+        candidates=candidates,
+    )
+
+
+def _inject_match_choice(
+    *,
+    tui: "QuestionnaireApp",
+    candidate_count: int,
+) -> None:
+    """Inject the 'No unique CSV match' choice widget after 'Add another
+    account (y/n)?' if not already present."""
+    # Check if already present.
+    for inp in tui.inputs:
+        w = inp if not isinstance(inp, AttrMap) else inp.base_widget
+        if (
+            hasattr(w, "question_data")
+            and w.question_data.question == MATCH_CHOICE_QUESTION
+        ):
+            return  # Already injected.
+
+    # Find insert position: after the last "Add another account (y/n)?".
+    insert_idx = None
+    for i, inp in enumerate(tui.inputs):
+        w = inp.base_widget if isinstance(inp, AttrMap) else inp
+        if (
+            hasattr(w, "question_data")
+            and w.question_data.question == "Add another account (y/n)?"
+        ):
+            insert_idx = i + 1
+
+    if insert_idx is None:
+        return  # "Add another account" not found.
+
+    # Build choice widget.
+    q_data = HorizontalMultipleChoiceQuestionData(
+        question=MATCH_CHOICE_QUESTION,
+        choices=[
+            "Correct amounts/dates",
+            "Enter matching CLI",
+        ],
+        ai_suggestions=[],
+        ans_required=True,
+        reconfigurer=True,
+        terminator=False,
+    )
+
+    widget = HorizontalMultipleChoiceWidget(question_data=q_data)
+    tui.inputs.insert(insert_idx, widget)
+    tui.questions.insert(insert_idx, q_data)
+
+    # Update pile contents.
+    pile_contents = list(tui.pile.contents[: tui.nr_of_headers])
+    for w in tui.inputs:
+        pile_contents.append((w, ("pack", None)))
+    # Re-append suggestion boxes (last 5 entries: divider, ai, divider,
+    # history, divider — but the exact count varies).  Rebuild cleanly.
+    pile_contents.extend(
+        [
+            (urwid.Divider(), ("pack", None)),
+            (
+                urwid.Columns(
+                    [
+                        (
+                            tui.descriptor_col_width,
+                            urwid.Text("AI suggestions: "),
+                        ),
+                        tui.ai_suggestion_box,
+                    ]
+                ),
+                ("pack", None),
+            ),
+            (
+                urwid.Columns(
+                    [
+                        (
+                            tui.descriptor_col_width,
+                            urwid.Text("History suggestions: "),
+                        ),
+                        tui.history_suggestion_box,
+                    ]
+                ),
+                ("pack", None),
+            ),
+        ]
+    )
+    tui.pile.contents = pile_contents
+
+
+def _remove_match_choice(*, tui: "QuestionnaireApp") -> None:
+    """Remove the match choice widget if present."""
+    indices_to_remove = []
+    for i, inp in enumerate(tui.inputs):
+        w = inp if not isinstance(inp, AttrMap) else inp.base_widget
+        if (
+            hasattr(w, "question_data")
+            and w.question_data.question == MATCH_CHOICE_QUESTION
+        ):
+            indices_to_remove.append(i)
+
+    if not indices_to_remove:
+        return
+
+    for idx in reversed(indices_to_remove):
+        del tui.inputs[idx]
+        if idx < len(tui.questions):
+            del tui.questions[idx]
+
+    # Rebuild pile contents.
+    pile_contents = list(tui.pile.contents[: tui.nr_of_headers])
+    for w in tui.inputs:
+        pile_contents.append((w, ("pack", None)))
+    pile_contents.extend(
+        [
+            (urwid.Divider(), ("pack", None)),
+            (
+                urwid.Columns(
+                    [
+                        (
+                            tui.descriptor_col_width,
+                            urwid.Text("AI suggestions: "),
+                        ),
+                        tui.ai_suggestion_box,
+                    ]
+                ),
+                ("pack", None),
+            ),
+            (
+                urwid.Columns(
+                    [
+                        (
+                            tui.descriptor_col_width,
+                            urwid.Text("History suggestions: "),
+                        ),
+                        tui.history_suggestion_box,
+                    ]
+                ),
+                ("pack", None),
+            ),
+        ]
+    )
+    tui.pile.contents = pile_contents
 
 
 @typechecked
@@ -1254,6 +1527,17 @@ def get_configuration(
                 metadata=prefilled_receipt.withdrawal_metadata,
             )
         preserved_answers = preserve_current_answers(tui=tui)
+
+    # Handle the "No unique CSV match" choice reconfigurer.
+    for question_nr, question_str, answer in reconfig_answers:
+        if question_str == MATCH_CHOICE_QUESTION:
+            if answer == "Correct amounts/dates":
+                # Remove the choice widget and let focus fall back
+                # to the amount field naturally.
+                _remove_match_choice(tui=tui)
+                preserved_answers = preserve_current_answers(tui=tui)
+            # "Enter matching CLI" is handled in ask_urwid_receipt.py
+            # (the while-loop detects the answer and suspends urwid).
 
     # Set focus to the next unanswered question
     tui = set_default_focus_and_answers(tui, preserved_answers)

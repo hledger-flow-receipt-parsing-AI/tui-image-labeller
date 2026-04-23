@@ -1,6 +1,9 @@
 from datetime import datetime
 from typing import List, Union
 
+from hledger_core.TransactionObjects.ExchangedItem import (
+    ExchangedItem,
+)
 from hledger_core.TransactionObjects.Receipt import Receipt
 from typeguard import typechecked
 
@@ -35,7 +38,7 @@ def build_receipt_from_cli(
     )
 
     shop_account_nr: Union[None, str] = get_input_with_az_chars_answer(
-        question=f"Shop account number (Optional, press enter to skip):",
+        question="Shop account number (Optional, press enter to skip):",
         allowed_empty=True,
         allowed_chars=r"[a-zA-Z0-9:]+",
     )
@@ -75,18 +78,21 @@ def build_receipt_from_cli(
     )
 
     if payed_by_card:
-        amount_payed_by_card = get_float_input(
+        _amount_payed_by_card = get_float_input(  # noqa: F841
             question="Amount paid by card: ", allow_optional=False
         )
-        amount_returned_to_card = get_float_input(
+        _amount_returned_to_card = get_float_input(  # noqa: F841
             question="Change returned: ", allow_optional=False
         )
 
         # Get card details.
         payed_from_default_account: bool = ask_yn_question_is_yes(
             question=(
-                "Was the receipt payed"
-                f" from:\n{receipt_owner_account_holder}:{receipt_owner_bank}:{receipt_owner_account_holder_type}\n?(y/n)"
+                "Was the receipt payed from:\n"
+                f"{receipt_owner_account_holder}:"
+                f"{receipt_owner_bank}:"
+                f"{receipt_owner_account_holder_type}"
+                "\n?(y/n)"
             )
         )
         if not payed_from_default_account:
@@ -121,7 +127,7 @@ def build_receipt_from_cli(
         # TODO: get to account/shop account.
 
     receipt_categorisation: str = get_input_with_az_chars_answer(
-        question=f"Receipt category:",
+        question="Receipt category:",
         allowed_empty=False,
         allowed_chars=r"[a-zA-Z:]+",
     )
@@ -165,7 +171,7 @@ def get_items(
             allowed_empty=False,
             allowed_chars=r"[a-zA-Z:]+",
         )
-        currency: str = input(f"Give price currency, e.g. EUR,BTC,$,YEN etc.")
+        currency: str = input("Give price currency, e.g. EUR,BTC,$,YEN etc.")
         quantity: float = get_float_input(
             question=f"{item_type} item quantity: ", allow_optional=False
         )

@@ -130,7 +130,8 @@ def get_sorted_unique_shop_ids(
             ):
                 shop_max_scores[shop_key] = score
 
-    # Sort shop IDs by score (descending) and name (alphabetical for equal scores)
+    # Sort shop IDs by score (descending) and name (alphabetical for equal
+    # scores)
     sorted_shops = sorted(
         shop_max_scores.keys(),
         key=lambda shop_key: (-shop_max_scores[shop_key], shop_key[0]),
@@ -161,7 +162,7 @@ def filter_receipts_without_address(
         labelled_receipts: List of Receipt objects to filter.
 
     Returns:
-        A list of Receipt objects where the shop_identifier.address has at least one non-None/non-empty field.
+        A list of Receipt objects where the shop_identifier.address has at least one non-None/non-empty field.  # noqa: E501
     """
 
     def has_valid_address(shop_id) -> bool:
@@ -298,9 +299,7 @@ def get_initial_complete_list(
     # is enforced by the scrolling widget, not here — so all addresses
     # remain selectable via arrow-key scrolling.
     choices: List[str] = ["manual address"]
-    shop_ids: List[ShopId] = [
-        ShopId(name="manual address", address=Address())
-    ]
+    shop_ids: List[ShopId] = [ShopId(name="manual address", address=Address())]
 
     seen: set = set()
     for shop_key in exact_or_sub + parent_match + rest:

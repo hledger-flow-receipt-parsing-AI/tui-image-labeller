@@ -1,10 +1,10 @@
 import json
 
 import pytest
-from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_core.TransactionObjects.Receipt import Receipt
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (  # noqa: E501
     HledgerFlowAccountInfo,
 )
-from hledger_core.TransactionObjects.Receipt import Receipt
 
 from tui_labeller.tuis.urwid.ask_urwid_receipt import build_receipt_from_urwid
 
@@ -22,7 +22,7 @@ def app():
 def test_assert_autocomplete_options():
     """Load receipt, feed into tui, ask userinput check if it is shown."""
     eg_path: str = (
-        "/home/a/finance/receipt_labels/2025-5-24_15:58:377753_3ea1051d1496297ca25c1fb22a02e0d7cd324d4fe35643d3973b08736b0435bb/receipt_image_to_obj_label.json"
+        "/home/a/finance/receipt_labels/2025-5-24_15:58:377753_3ea1051d1496297ca25c1fb22a02e0d7cd324d4fe35643d3973b08736b0435bb/receipt_image_to_obj_label.json"  # noqa: E501
     )
     with open(eg_path, encoding="utf-8") as f:
         receipt_data = json.load(f)
@@ -53,4 +53,4 @@ def test_assert_autocomplete_options():
         prefilled_receipt=prefilled_receipt,
     )
 
-    assert 1 == 1, f"Unexpected result."
+    assert 1 == 1, "Unexpected result."

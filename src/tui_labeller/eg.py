@@ -2,30 +2,30 @@ import json
 from copy import deepcopy
 from pprint import pprint
 
-from hledger_config.config.load_config import Config, load_config
-from hledger_receipt_processing.management.get_all_hledger_flow_accounts import (
+from hledger_config.config.load_config import Config, load_config  # noqa: E501
+from hledger_core.TransactionObjects.AccountTransaction import (  # noqa: E501
+    AccountTransaction,
+)
+from hledger_core.TransactionObjects.Receipt import Receipt
+from hledger_receipt_processing.management.get_all_hledger_flow_accounts import (  # noqa: E501
     get_all_accounts,
 )
-from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (  # noqa: E501
     HledgerFlowAccountInfo,
 )
 
 # from tui_labeller.tuis.urwid.QuestionnaireApp import QuestionnaireApp
-from hledger_receipt_processing.receipts_to_objects.get_asset_categories import (
+from hledger_receipt_processing.receipts_to_objects.get_asset_categories import (  # noqa: E501
     get_hledger_pure_accounts_without_csv,
 )
-from hledger_core.TransactionObjects.AccountTransaction import (
-    AccountTransaction,
-)
-from hledger_core.TransactionObjects.Receipt import Receipt
 
 from tui_labeller.tuis.urwid.ask_urwid_receipt import build_receipt_from_urwid
 
 
 def pre_fill():
     """Load receipt, feed into tui, ask userinput check if it is shown."""
-    eg_path: str = (
-        "/home/a/finance/receipt_labels/2025-5-24_15:58:377753_3ea1051d1496297ca25c1fb22a02e0d7cd324d4fe35643d3973b08736b0435bb/receipt_image_to_obj_label.json"
+    eg_path: str = (  # noqa: E501
+        "/home/a/finance/receipt_labels/2025-5-24_15:58:377753_3ea1051d1496297ca25c1fb22a02e0d7cd324d4fe35643d3973b08736b0435bb/receipt_image_to_obj_label.json"  # noqa: E501
     )
     with open(eg_path, encoding="utf-8") as f:
         receipt_data = json.load(f)
@@ -64,7 +64,7 @@ def pre_fill():
         prefilled_receipt=prefilled_receipt,
     )
 
-    assert 1 == 1, f"Unexpected result."
+    assert 1 == 1, "Unexpected result."  # nosec B101
 
 
 pre_fill()

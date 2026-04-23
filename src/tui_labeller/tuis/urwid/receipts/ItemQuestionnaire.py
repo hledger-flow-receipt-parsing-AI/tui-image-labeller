@@ -11,7 +11,7 @@ from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.input_validation.InputValidationQuestion import (
     InputValidationQuestion,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (  # noqa: E501
     VerticalMultipleChoiceWidget,
 )
 from tui_labeller.tuis.urwid.question_data_classes import (
@@ -40,7 +40,7 @@ class ItemQuestionnaire:
     ):
         return [
             InputValidationQuestionData(
-                question=f"Name/description (a-Z only): ",
+                question="Name/description (a-Z only): ",
                 input_type=InputType.LETTERS,
                 ans_required=True,
                 ai_suggestions=[
@@ -61,7 +61,7 @@ class ItemQuestionnaire:
                 history_suggestions=[],
             ),
             InputValidationQuestionData(
-                question=f"Amount: ",
+                question="Amount: ",
                 input_type=InputType.FLOAT,
                 ans_required=True,
                 ai_suggestions=[
@@ -72,7 +72,7 @@ class ItemQuestionnaire:
                 history_suggestions=[],
             ),
             InputValidationQuestionData(
-                question=f"Price for selected amount:",
+                question="Price for selected amount:",
                 input_type=InputType.FLOAT,
                 ans_required=True,
                 ai_suggestions=[
@@ -126,7 +126,8 @@ class ItemQuestionnaire:
         if not."""
         seen = set()
         for q in self.questions:
-            # Use question for InputValidationQuestionData, question for VerticalMultipleChoiceQuestionData
+            # Use question for InputValidationQuestionData, question for
+            # VerticalMultipleChoiceQuestionData
             question = getattr(q, "question", getattr(q, "question", None))
             if question is None:
                 raise ValueError(

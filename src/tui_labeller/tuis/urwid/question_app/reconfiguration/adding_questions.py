@@ -100,11 +100,12 @@ def add_emtpy_shell_account_questions_into_tui(
     labelled_receipts: List[Receipt],
 ) -> QuestionnaireApp:
 
-    # Insert new_account_questions_to_add into current_questions at last_account_idx + 1
+    # Insert new_account_questions_to_add into current_questions at
+    # last_account_idx + 1
     new_questions = (
         current_questions[: last_account_idx + 1]
         + new_account_questions_to_add
-        + current_questions[last_account_idx + 1 :]
+        + current_questions[last_account_idx + 1 :]  # noqa: E203
     )
 
     new_tui: QuestionnaireApp = create_questionnaire(
@@ -152,7 +153,8 @@ def create_new_account_questions_to_add(
         ]
     ] = AccountQuestions(
         account_infos_str=available_accounts,  # Only include available accounts
-        accounts_without_csv=account_questions_to_add.accounts_without_csv,  # TODO: verify this is necessary and correct.
+        # TODO: verify this is necessary and correct.
+        accounts_without_csv=account_questions_to_add.accounts_without_csv,
     ).account_questions
 
     for new_account_question in new_account_questions_to_add:
@@ -161,8 +163,9 @@ def create_new_account_questions_to_add(
                 new_account_question.question
                 == "Belongs to bank/accounts_without_csv:"
             ):
-                # TODO: ensure the pre-filled receipt answer exists within the available accounts.
-                new_account_question.choices = available_accounts  # TODO: ensure they are all the accounts.
+                # TODO: ensure the pre-filled receipt answer exists within the available accounts.  # noqa: E501
+                # TODO: ensure they are all the accounts.
+                new_account_question.choices = available_accounts
 
     return new_account_questions_to_add
 
@@ -180,7 +183,9 @@ def get_last_account_question_index(
         ]
     ],
 ) -> int:
-    # Finds the highest index in current_questions where a question matches any in account_questions_to_add.account_questions. Returns -1 if no match is found.
+    # Finds the highest index in current_questions where a question matches
+    # any in account_questions_to_add.account_questions. Returns -1 if no
+    # match is found.
     last_account_idx: int = max(
         (
             i
@@ -220,7 +225,8 @@ def actually_set_answers(
 
     # Second pass: name-based fallback for answers shifted by insertion.
     unmatched = [
-        pa for i, pa in enumerate(preserved_answers)
+        pa
+        for i, pa in enumerate(preserved_answers)
         if pa is not None and i not in matched_preserved_indices
     ]
     if unmatched:

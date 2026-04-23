@@ -50,24 +50,25 @@ def get_selected_caption(
         suggestion_text = ""
         for suggestion in vc_question_data.ai_suggestions:
             if suggestion.question == vc_question_data.choices[selected_index]:
-                # Use fixed-width spacing instead of tabs for consistent rendering
+                # Use fixed-width spacing instead of tabs for consistent
+                # rendering
                 suggestion_text = (
                     f"{suggestion.probability:.2f} {suggestion.ai_suggestions}"
                 )
         # Replace tabs with spaces and ensure consistent indentation
         return (
-            f"{' ' * indentation}{selected_index} {vc_question_data.choices[selected_index]:<{max_choice_length}} "
+            f"{' ' * indentation}{selected_index} {vc_question_data.choices[selected_index]:<{max_choice_length}} "  # noqa: E501
             f" {suggestion_text}"
         )
 
     new_caption: str = vc_question_data.question
     new_caption += (
         f"\n{
-        get_selected_answer(
-            vc_question_data=vc_question_data,
-            selected_index=selected_index,
-            indentation=indentation,
-        )}"
+            get_selected_answer(
+                vc_question_data=vc_question_data,
+                selected_index=selected_index,
+                indentation=indentation,
+                )}"
     )
 
     return f"{new_caption}\n"
@@ -83,7 +84,9 @@ def get_vc_question(
     result = [vc_question_data.question]
     # If batch_size is None, show all choices from batch_start
     choices = (
-        vc_question_data.choices[batch_start : batch_start + batch_size]
+        vc_question_data.choices[
+            batch_start : batch_start + batch_size  # noqa: E203
+        ]
         if batch_size
         else vc_question_data.choices[batch_start:]
     )
@@ -93,7 +96,8 @@ def get_vc_question(
         suggestion_text = ""
         for suggestion in vc_question_data.ai_suggestions:
             if suggestion.question == choice:
-                # Use fixed-width spacing instead of tabs for consistent rendering
+                # Use fixed-width spacing instead of tabs for consistent
+                # rendering
                 suggestion_text = (
                     f"{suggestion.probability:.2f} {suggestion.ai_suggestions}"
                 )
@@ -118,8 +122,8 @@ def get_vc_question_with_highlight(
     highlighted_index: int,
     window_size: int = 12,
 ) -> str:
-    """Render the choice list with a visible window that scrolls to keep
-    the highlighted item visible.  Index 0 is always pinned at the top.
+    """Render the choice list with a visible window that scrolls to keep the
+    highlighted item visible.  Index 0 is always pinned at the top.
 
     The visible window contains up to *window_size* entries.  When the
     highlighted index moves beyond the window, the window shifts so the
@@ -153,7 +157,9 @@ def get_vc_question_with_highlight(
         visible_indices = [0] + list(range(window_start, window_end))
 
     max_choice_length = (
-        max(len(all_choices[i]) for i in visible_indices) if visible_indices else 0
+        max(len(all_choices[i]) for i in visible_indices)
+        if visible_indices
+        else 0
     )
 
     result = [vc_question_data.question]

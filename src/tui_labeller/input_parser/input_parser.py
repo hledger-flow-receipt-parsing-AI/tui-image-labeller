@@ -71,7 +71,7 @@ def get_input_with_az_chars_answer(
 
     Args:
         question: The question to ask.
-        allowed_chars: A regular expression string specifying the allowed characters.
+        allowed_chars: A regex specifying the allowed characters.
         case_sensitive: Whether the check should be case-sensitive.
 
     Returns:

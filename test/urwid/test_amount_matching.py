@@ -1,14 +1,25 @@
 """Tests for _try_non_withdrawal_amount_match and _validate_account_date_range.
 
-Scenarios:
+Scenarios (amount matching):
   1. Exact match: receipt amount matches one CSV transaction → green.
   2. No match (date out of range): bank processed the transaction a day
      later than the config's matching margin allows → red.
   3. No match (amount mismatch): receipt amount doesn't match → red.
   4. Ambiguous: multiple CSV transactions match → red.
   5. Wallet account (no CSV): matching is skipped, fields stay normal.
-  6. Date-range validation: account's CSV has no data for the
-     receipt year → red.
+
+Scenarios (date-range validation):
+  6. CSV spans receipt date → normal.
+  7. CSV ends before receipt date → red + "too_late" sidebar message.
+  8. CSV starts after receipt date → red + "too_early" sidebar message.
+  9. Empty CSV data → red + "no_data" sidebar message.
+  10. Wallet (no CSV) → normal, no sidebar message.
+
+Scenarios (return values and match choice widget):
+  11. AmountMatchResult status reflects match outcome.
+  12. DateRangeResult status reflects date coverage.
+  13. Mismatch injects choice widget after "Add another account".
+  14. Match removes choice widget if present.
 """
 
 from datetime import datetime
@@ -30,6 +41,7 @@ from tui_labeller.tuis.urwid.question_app.generator import (
     create_questionnaire,
 )
 from tui_labeller.tuis.urwid.question_app.reconfiguration.reconfiguration import (  # noqa: E501
+    MATCH_CHOICE_QUESTION,
     _try_non_withdrawal_amount_match,
     _validate_account_date_range,
 )
@@ -207,6 +219,23 @@ def _get_attr(tui, question_substr: str) -> Optional[dict]:
         if question_substr in inp.base_widget.question_data.question:
             return inp.attr_map
     return None
+
+
+def _get_sidebar_text(tui) -> str:
+    """Read the message text from the sidebar error_display panel."""
+    return tui.error_display.base_widget.contents[1][0].text
+
+
+def _has_match_choice(tui) -> bool:
+    """Check if the match choice widget is present in the TUI."""
+    for inp in tui.inputs:
+        w = inp.base_widget if hasattr(inp, "base_widget") else inp
+        if (
+            hasattr(w, "question_data")
+            and w.question_data.question == MATCH_CHOICE_QUESTION
+        ):
+            return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -412,6 +441,215 @@ class TestAmountMatch:
 
         assert _get_attr(tui, "Amount paid") == {None: "normal"}
 
+    # -------------------------------------------------------------------
+    # Return value tests
+    # -------------------------------------------------------------------
+
+    def test_exact_match_returns_matched(self, bank_account, bank_config):
+        """Unique match → AmountMatchResult(status='matched')."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        txn = _make_transaction(bank_account, datetime(2025, 1, 15), -42.17)
+        csv_data = {bank_config: {2025: [txn]}}
+        config = _make_config(days=2, amount_range=0)
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        result = _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert result is not None
+        assert result.status == "matched"
+        assert result.candidate_count == 1
+
+    def test_no_match_returns_no_match(self, bank_account, bank_config):
+        """Amount mismatch → AmountMatchResult(status='no_match')."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        txn = _make_transaction(bank_account, datetime(2025, 1, 15), -50.00)
+        csv_data = {bank_config: {2025: [txn]}}
+        config = _make_config(days=2, amount_range=0)
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        result = _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert result is not None
+        assert result.status == "no_match"
+        assert result.candidate_count == 0
+
+    def test_ambiguous_returns_ambiguous(self, bank_account, bank_config):
+        """Two matching transactions →
+        AmountMatchResult(status='ambiguous')."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        txn1 = _make_transaction(bank_account, datetime(2025, 1, 15), -42.17)
+        txn2 = _make_transaction(bank_account, datetime(2025, 1, 16), -42.17)
+        csv_data = {bank_config: {2025: [txn1, txn2]}}
+        config = _make_config(days=2, amount_range=0)
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        result = _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert result is not None
+        assert result.status == "ambiguous"
+        assert result.candidate_count == 2
+
+    def test_wallet_returns_none(self, wallet_account, wallet_config):
+        """Wallet account → returns None (skipped)."""
+        csv_data = {}
+        config = _make_config(days=2, amount_range=0)
+        tui = _build_tui(
+            receipt_date=datetime(2025, 2, 10, 8, 15),
+            account_str=wallet_account.to_string(),
+            amount_paid="20",
+        )
+
+        result = _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert result is None
+
+    # -------------------------------------------------------------------
+    # Match choice widget tests
+    # -------------------------------------------------------------------
+
+    def test_mismatch_injects_choice_widget(
+        self,
+        bank_account,
+        bank_config,
+    ):
+        """No match → injects the match choice widget."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        txn = _make_transaction(bank_account, datetime(2025, 1, 15), -50.00)
+        csv_data = {bank_config: {2025: [txn]}}
+        config = _make_config(days=2, amount_range=0)
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        assert not _has_match_choice(tui)
+
+        _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert _has_match_choice(tui)
+
+    def test_ambiguous_injects_choice_widget(
+        self,
+        bank_account,
+        bank_config,
+    ):
+        """Ambiguous match → also injects the match choice widget."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        txn1 = _make_transaction(bank_account, datetime(2025, 1, 15), -42.17)
+        txn2 = _make_transaction(bank_account, datetime(2025, 1, 16), -42.17)
+        csv_data = {bank_config: {2025: [txn1, txn2]}}
+        config = _make_config(days=2, amount_range=0)
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert _has_match_choice(tui)
+
+    def test_match_removes_choice_widget(self, bank_account, bank_config):
+        """Unique match after a previous mismatch → removes choice widget."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        config = _make_config(days=2, amount_range=0)
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        # First call: mismatch → inject choice.
+        txn_bad = _make_transaction(
+            bank_account,
+            datetime(2025, 1, 15),
+            -50.00,
+        )
+        csv_data = {bank_config: {2025: [txn_bad]}}
+        _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_data,
+        )
+        assert _has_match_choice(tui)
+
+        # Second call: exact match → remove choice.
+        txn_good = _make_transaction(
+            bank_account,
+            datetime(2025, 1, 15),
+            -42.17,
+        )
+        csv_data = {bank_config: {2025: [txn_good]}}
+        _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_data,
+        )
+        assert not _has_match_choice(tui)
+
+    def test_no_double_injection(self, bank_account, bank_config):
+        """Calling mismatch twice doesn't inject the widget twice."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        txn = _make_transaction(bank_account, datetime(2025, 1, 15), -50.00)
+        csv_data = {bank_config: {2025: [txn]}}
+        config = _make_config(days=2, amount_range=0)
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_data,
+        )
+        input_count_after_first = len(tui.inputs)
+
+        _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_data,
+        )
+        assert len(tui.inputs) == input_count_after_first
+
 
 # ---------------------------------------------------------------------------
 # Tests: _validate_account_date_range
@@ -422,10 +660,19 @@ class TestDateRangeValidation:
     """Tests for _validate_account_date_range."""
 
     def test_year_present_stays_normal(self, bank_account, bank_config):
-        """CSV has transactions for 2025, receipt is 2025 → normal."""
+        """CSV spans receipt date -> normal."""
         receipt_date = datetime(2025, 1, 15, 10, 30)
-        txn = _make_transaction(bank_account, datetime(2025, 6, 1), -10.0)
-        csv_data = {bank_config: {2025: [txn]}}
+        txn_before = _make_transaction(
+            bank_account,
+            datetime(2025, 1, 10),
+            -10.0,
+        )
+        txn_after = _make_transaction(
+            bank_account,
+            datetime(2025, 6, 1),
+            -10.0,
+        )
+        csv_data = {bank_config: {2025: [txn_before, txn_after]}}
         tui = _build_tui(
             receipt_date=receipt_date,
             account_str=bank_account.to_string(),
@@ -475,3 +722,251 @@ class TestDateRangeValidation:
 
         # Not in csv_transactions_per_account → no change.
         assert _get_attr(tui, "Belongs to") == {None: "normal"}
+
+    # -------------------------------------------------------------------
+    # Return value tests
+    # -------------------------------------------------------------------
+
+    def test_in_range_returns_ok(self, bank_account, bank_config):
+        """CSV spans receipt date → DateRangeResult(status='ok')."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        txn_before = _make_transaction(
+            bank_account,
+            datetime(2025, 1, 10),
+            -10.0,
+        )
+        txn_after = _make_transaction(
+            bank_account,
+            datetime(2025, 6, 1),
+            -10.0,
+        )
+        csv_data = {bank_config: {2025: [txn_before, txn_after]}}
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        result = _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert result is not None
+        assert result.status == "ok"
+        assert result.csv_min == datetime(2025, 1, 10)
+        assert result.csv_max == datetime(2025, 6, 1)
+
+    def test_too_late_returns_too_late(self, bank_account, bank_config):
+        """Receipt after CSV max → DateRangeResult(status='too_late')."""
+        receipt_date = datetime(2025, 3, 20, 10, 30)
+        txn = _make_transaction(bank_account, datetime(2025, 1, 10), -10.0)
+        csv_data = {bank_config: {2025: [txn]}}
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        result = _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert result is not None
+        assert result.status == "too_late"
+        assert result.csv_max == datetime(2025, 1, 10)
+
+    def test_too_early_returns_too_early(self, bank_account, bank_config):
+        """Receipt before CSV min → DateRangeResult(status='too_early')."""
+        receipt_date = datetime(2024, 12, 1, 10, 30)
+        txn = _make_transaction(bank_account, datetime(2025, 2, 1), -10.0)
+        csv_data = {bank_config: {2025: [txn]}}
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        result = _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert result is not None
+        assert result.status == "too_early"
+        assert result.csv_min == datetime(2025, 2, 1)
+
+    def test_no_transactions_returns_no_data(
+        self,
+        bank_account,
+        bank_config,
+    ):
+        """Empty transaction list → DateRangeResult(status='no_data')."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        csv_data = {bank_config: {2025: []}}
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        result = _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert result is not None
+        assert result.status == "no_data"
+        assert _get_attr(tui, "Belongs to") == {None: "error"}
+
+    def test_none_csv_data_returns_none(self, bank_account, bank_config):
+        """csv_transactions_per_account=None → returns None."""
+        tui = _build_tui(
+            receipt_date=datetime(2025, 1, 15, 10, 30),
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        result = _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account=None,
+        )
+
+        assert result is None
+
+    # -------------------------------------------------------------------
+    # Sidebar message tests
+    # -------------------------------------------------------------------
+
+    def test_too_late_sidebar_message(self, bank_account, bank_config):
+        """Receipt after CSV max → sidebar shows 'CSV ends at ...'."""
+        receipt_date = datetime(2025, 3, 20, 10, 30)
+        txn = _make_transaction(bank_account, datetime(2025, 1, 10), -10.0)
+        csv_data = {bank_config: {2025: [txn]}}
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account=csv_data,
+        )
+
+        sidebar_text = _get_sidebar_text(tui)
+        assert "CSV ends at 2025-01-10" in sidebar_text
+        assert "69 day(s) later" in sidebar_text
+
+    def test_too_early_sidebar_message(self, bank_account, bank_config):
+        """Receipt before CSV min → sidebar shows 'CSV starts at ...'."""
+        receipt_date = datetime(2024, 12, 1, 10, 30)
+        txn = _make_transaction(bank_account, datetime(2025, 2, 1), -10.0)
+        csv_data = {bank_config: {2025: [txn]}}
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account=csv_data,
+        )
+
+        sidebar_text = _get_sidebar_text(tui)
+        assert "CSV starts at 2025-02-01" in sidebar_text
+        assert "62 day(s) earlier" in sidebar_text
+
+    def test_no_data_sidebar_message(self, bank_account, bank_config):
+        """Empty CSV → sidebar shows 'No CSV transactions ...'."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        csv_data = {bank_config: {2025: []}}
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account=csv_data,
+        )
+
+        sidebar_text = _get_sidebar_text(tui)
+        assert "No CSV transactions" in sidebar_text
+
+    def test_ok_clears_sidebar(self, bank_account, bank_config):
+        """Date in range → sidebar cleared to 'None'."""
+        receipt_date = datetime(2025, 1, 15, 10, 30)
+        txn_before = _make_transaction(
+            bank_account,
+            datetime(2025, 1, 10),
+            -10.0,
+        )
+        txn_after = _make_transaction(
+            bank_account,
+            datetime(2025, 6, 1),
+            -10.0,
+        )
+        csv_data = {bank_config: {2025: [txn_before, txn_after]}}
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        # First set an error to verify it gets cleared.
+        _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account={bank_config: {2025: []}},
+        )
+        assert "No CSV transactions" in _get_sidebar_text(tui)
+
+        # Now validate with good data.
+        _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account=csv_data,
+        )
+
+        sidebar_text = _get_sidebar_text(tui)
+        assert "None" in sidebar_text
+
+    def test_too_late_sidebar_with_multi_year_data(
+        self,
+        bank_account,
+        bank_config,
+    ):
+        """Transactions across 2024+2025 → min/max computed globally."""
+        receipt_date = datetime(2025, 7, 1, 10, 30)
+        txn_2024 = _make_transaction(
+            bank_account,
+            datetime(2024, 6, 1),
+            -10.0,
+        )
+        txn_2025 = _make_transaction(
+            bank_account,
+            datetime(2025, 3, 15),
+            -10.0,
+        )
+        csv_data = {
+            bank_config: {2024: [txn_2024], 2025: [txn_2025]},
+        }
+        tui = _build_tui(
+            receipt_date=receipt_date,
+            account_str=bank_account.to_string(),
+            amount_paid="42.17",
+        )
+
+        result = _validate_account_date_range(
+            tui=tui,
+            csv_transactions_per_account=csv_data,
+        )
+
+        assert result is not None
+        assert result.status == "too_late"
+        assert result.csv_min == datetime(2024, 6, 1)
+        assert result.csv_max == datetime(2025, 3, 15)
+        sidebar_text = _get_sidebar_text(tui)
+        assert "CSV ends at 2025-03-15" in sidebar_text

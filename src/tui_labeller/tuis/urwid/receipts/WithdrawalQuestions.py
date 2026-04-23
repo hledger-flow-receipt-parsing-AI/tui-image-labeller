@@ -6,7 +6,6 @@ from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.question_data_classes import (
-    AISuggestion,
     HorizontalMultipleChoiceQuestionData,
     InputValidationQuestionData,
     VerticalMultipleChoiceQuestionData,

@@ -43,8 +43,9 @@ def generate_current_questions(
             accounts_without_csv=accounts_without_csv,
         )
         # if transaction.account:
-        account_str = (
-            f"{account_transaction.account.bank or ''}:{account_transaction.account.account_holder or ''}"
+        _account_str = (  # noqa: F841
+            f"{account_transaction.account.bank or ''}"
+            f":{account_transaction.account.account_holder or ''}"
         )
 
         # Validate account if it is a bank account and exists in account_infos
@@ -54,7 +55,7 @@ def generate_current_questions(
         # #     account_transaction.account
         # #     and account_transaction.account.asset_type == "bank"
         # #     and account_transaction.account.bank
-        # #     in account_infos_str  # TODO: if can switch comparison from HledgerFlowAccount to str.
+        # #     in account_infos_str  # TODO: if can switch comparison from HledgerFlowAccount to str.  # noqa: E501
         # # ):
         #     new_account_questions.validate_account(account_str)
 

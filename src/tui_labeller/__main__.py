@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 
-from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (  # noqa: E501
     HledgerFlowAccountInfo,
 )
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
         # app.run()
 
         build_receipt_from_urwid(
-            config=config,
+            config=config,  # noqa: F821
             hledger_account_infos=[
                 HledgerFlowAccountInfo(
                     account_holder="account_placeholder",

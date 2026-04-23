@@ -5,11 +5,11 @@ from typing import List, Tuple, Union
 
 import pytest
 import urwid
-from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
-    HledgerFlowAccountInfo,
-)
 from hledger_core.TransactionObjects.ExchangedItem import ExchangedItem
 from hledger_core.TransactionObjects.Receipt import Receipt
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (  # noqa: E501
+    HledgerFlowAccountInfo,
+)
 
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
     DateTimeQuestion,
@@ -17,10 +17,10 @@ from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
 from tui_labeller.tuis.urwid.input_validation.InputValidationQuestion import (
     InputValidationQuestion,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (  # noqa: E501
     HorizontalMultipleChoiceWidget,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (  # noqa: E501
     VerticalMultipleChoiceWidget,
 )
 from tui_labeller.tuis.urwid.question_app.get_answers import (
@@ -157,7 +157,7 @@ def test_asset_selection(some_dict):
 
 
 # TODO:
-"""Test buying bananas from an account."""
-"""Test buying bananas with cash and getting some money back."""
-"""Test buying gold from an account."""
-"""Test buying gold with bitcoin."""
+# Test buying bananas from an account.
+# Test buying bananas with cash and getting some money back.
+# Test buying gold from an account.
+# Test buying gold with bitcoin.

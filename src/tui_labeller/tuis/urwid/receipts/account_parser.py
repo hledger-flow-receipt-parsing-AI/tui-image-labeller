@@ -4,15 +4,15 @@ from typing import List, Optional, Tuple, Union
 from hledger_config.config.AccountConfig import AccountConfig
 from hledger_config.config.load_config import Config
 from hledger_core.Currency import Currency
-from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
-    HledgerFlowAccountInfo,
-)
 from hledger_core.TransactionObjects.Account import Account
 from hledger_core.TransactionObjects.AccountTransaction import (
     AccountTransaction,
 )
 from hledger_core.TransactionObjects.ExchangedItem import ExchangedItem
 from hledger_core.TransactionObjects.Receipt import WithdrawalMetadata
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (  # noqa: E501
+    HledgerFlowAccountInfo,
+)
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
@@ -21,10 +21,10 @@ from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
 from tui_labeller.tuis.urwid.input_validation.InputValidationQuestion import (
     InputValidationQuestion,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (  # noqa: E501
     HorizontalMultipleChoiceWidget,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (  # noqa: E501
     VerticalMultipleChoiceWidget,
 )
 
@@ -132,7 +132,13 @@ def get_accounts_from_answers(
             next_widget, next_answer = final_answers[i + offset]
             next_caption = (
                 next_widget.question_data.question
-                if isinstance(next_widget, (HorizontalMultipleChoiceWidget, VerticalMultipleChoiceWidget))
+                if isinstance(
+                    next_widget,
+                    (
+                        HorizontalMultipleChoiceWidget,
+                        VerticalMultipleChoiceWidget,
+                    ),
+                )
                 else getattr(next_widget, "caption", "")
             )
             if "Amount paid from account:" in next_caption:
@@ -151,7 +157,8 @@ def get_accounts_from_answers(
             change_returned = float(change_answer)
             offset += 1
 
-            # Set payment_currency when it differs from the account's base currency
+            # Set payment_currency when it differs from the account's base
+            # currency
             payment_currency = (
                 currency if currency != account.base_currency else None
             )

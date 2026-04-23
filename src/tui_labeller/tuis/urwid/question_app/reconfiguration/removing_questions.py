@@ -103,7 +103,7 @@ def remove_specific_questions_from_list(
 
     Args:
         app: The running QuestionnaireApp instance to modify.
-        expected_questions: List of questions to remove if found in app.questions.
+        expected_questions: List of questions to remove if found in app.questions.  # noqa: E501
 
     Raises:
         ValueError: If expected_questions is empty.

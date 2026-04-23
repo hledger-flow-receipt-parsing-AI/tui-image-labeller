@@ -10,10 +10,10 @@ from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
 from tui_labeller.tuis.urwid.input_validation.InputValidationQuestion import (
     InputValidationQuestion,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (  # noqa: E501
     HorizontalMultipleChoiceWidget,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (  # noqa: E501
     VerticalMultipleChoiceWidget,
 )
 from tui_labeller.tuis.urwid.question_data_classes import (

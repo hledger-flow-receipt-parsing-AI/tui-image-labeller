@@ -38,14 +38,11 @@ class Test_script_with_multiline_args(unittest.TestCase):
         return random_dir
 
     def test_multiline_args_and_dirs(self):
-        account_holder: str = "some_holder"
-        bank_name: str = "some_bank"
-        account_type: str = "checking"
-
         # Simulate the CLI args.
 
         cli_args = [
-            "tui_labeller_filler_name_to_skip_script_at_arg[0]",  # Dummy program name
+            # Dummy program name
+            "tui_labeller_filler_name_to_skip_script_at_arg[0]",
             "-iimages/receipts/0.jpg",
             f"{self.existent_tmp_dir}",
             "--output-json-dir",

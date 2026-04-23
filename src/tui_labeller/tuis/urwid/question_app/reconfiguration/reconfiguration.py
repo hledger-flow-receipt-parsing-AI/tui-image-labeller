@@ -1,7 +1,9 @@
 import logging
-from datetime import timedelta
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import urwid
 from hledger_config.config.AccountConfig import AccountConfig
 from hledger_config.config.load_config import Config
 from hledger_core.generics.Transaction import Transaction
@@ -14,43 +16,72 @@ from urwid import AttrMap
 
 logger = logging.getLogger(__name__)
 
-from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
+from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (  # noqa: E501, E402
     DateTimeQuestion,
 )
-from tui_labeller.tuis.urwid.input_validation.InputType import InputType
-from tui_labeller.tuis.urwid.input_validation.InputValidationQuestion import (
+from tui_labeller.tuis.urwid.input_validation.InputType import (  # noqa: E402
+    InputType,
+)
+from tui_labeller.tuis.urwid.input_validation.InputValidationQuestion import (  # noqa: E501, E402
     InputValidationQuestion,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (  # noqa: E501, E402
     HorizontalMultipleChoiceWidget,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (  # noqa: E501, E402
     VerticalMultipleChoiceWidget,
 )
-from tui_labeller.tuis.urwid.question_app.addresses.update_addresses import (
+from tui_labeller.tuis.urwid.question_app.addresses.update_addresses import (  # noqa: E501, E402
     get_initial_complete_list,
 )
-from tui_labeller.tuis.urwid.question_app.generator import create_questionnaire
-from tui_labeller.tuis.urwid.question_app.reconfiguration.adding_questions import (
+from tui_labeller.tuis.urwid.question_app.generator import (  # noqa: E402
+    create_questionnaire,
+)
+from tui_labeller.tuis.urwid.question_app.reconfiguration.adding_questions import (  # noqa: E501, E402
     handle_add_account,
 )
-from tui_labeller.tuis.urwid.question_app.reconfiguration.removing_questions import (
+from tui_labeller.tuis.urwid.question_app.reconfiguration.removing_questions import (  # noqa: E501, E402
     remove_later_account_questions,
 )
-from tui_labeller.tuis.urwid.question_data_classes import (
+from tui_labeller.tuis.urwid.question_data_classes import (  # noqa: E402
     DateQuestionData,
     HorizontalMultipleChoiceQuestionData,
     InputValidationQuestionData,
     VerticalMultipleChoiceQuestionData,
 )
-from tui_labeller.tuis.urwid.QuestionnaireApp import (
+from tui_labeller.tuis.urwid.QuestionnaireApp import (  # noqa: E402
     QuestionnaireApp,
 )
-from tui_labeller.tuis.urwid.receipts.AccountQuestions import AccountQuestions
-from tui_labeller.tuis.urwid.receipts.OptionalQuestions import OptionalQuestions
-from tui_labeller.tuis.urwid.receipts.WithdrawalQuestions import (
+from tui_labeller.tuis.urwid.receipts.AccountQuestions import (  # noqa: E402
+    AccountQuestions,
+)
+from tui_labeller.tuis.urwid.receipts.OptionalQuestions import (  # noqa: E402
+    OptionalQuestions,
+)
+from tui_labeller.tuis.urwid.receipts.WithdrawalQuestions import (  # noqa: E402
     WithdrawalQuestions,
 )
+
+DATE_RANGE_ERROR_ID = "__date_range_error__"
+MATCH_CHOICE_QUESTION = "No unique CSV match. Select action:"
+
+
+@dataclass
+class DateRangeResult:
+    """Result of comparing receipt date to CSV date bounds."""
+
+    status: str  # "ok", "too_early", "too_late", "no_data"
+    csv_min: Optional[datetime] = None
+    csv_max: Optional[datetime] = None
+
+
+@dataclass
+class AmountMatchResult:
+    """Result of matching receipt amount against CSV transactions."""
+
+    status: str  # "matched", "no_match", "ambiguous", "skipped"
+    candidate_count: int = 0
+    candidates: List[Transaction] = field(default_factory=list)
 
 
 @typechecked
@@ -177,10 +208,12 @@ def handle_manual_address_questions(
         q in manual_question_ids for q in current_question_ids
     )
 
-    # If "manual address" is selected and manual questions are not present, add them
+    # If "manual address" is selected and manual questions are not present,
+    # add them
     if address_selector_answer == "manual address" and not has_manual_questions:
 
-        # Find the position to insert manual address questions (after address selector)
+        # Find the position to insert manual address questions (after address
+        # selector)
         insert_index = (
             address_selector_index + 1
             if address_selector_index is not None
@@ -281,7 +314,8 @@ def remove_manual_address_questions(
         q in manual_question_ids for q in current_question_ids
     )
 
-    # If a non-manual address is selected and manual questions are present, remove them
+    # If a non-manual address is selected and manual questions are present,
+    # remove them
     if address_selector_answer != "manual address" and has_manual_questions:
         # Filter out manual address questions
         new_questions = [
@@ -364,7 +398,8 @@ def set_default_focus_and_answers(
     # Second pass: name-based fallback for answers shifted by question
     # insertion/removal (e.g. withdrawal toggle injecting questions).
     unmatched = [
-        pa for i, pa in enumerate(preserved_answers)
+        pa
+        for i, pa in enumerate(preserved_answers)
         if pa is not None and i not in matched_preserved_indices
     ]
     if unmatched:
@@ -460,7 +495,8 @@ def handle_withdrawal_toggle(
         if toggle_index is None:
             return tui
 
-        # Build new question list: skip hidden questions, add withdrawal questions.
+        # Build new question list: skip hidden questions, add withdrawal
+        # questions.
         current_q_data = [
             inp.base_widget.question_data
             for inp in tui.inputs[: toggle_index + 1]
@@ -468,8 +504,9 @@ def handle_withdrawal_toggle(
         current_q_data.extend(withdrawal_questions.withdrawal_questions)
         remaining = [
             inp.base_widget.question_data
-            for inp in tui.inputs[toggle_index + 1 :]
-            if inp.base_widget.question_data.question not in withdrawal_hidden_qs
+            for inp in tui.inputs[toggle_index + 1 :]  # noqa: E203
+            if inp.base_widget.question_data.question
+            not in withdrawal_hidden_qs
         ]
         current_q_data.extend(remaining)
 
@@ -551,7 +588,8 @@ AMOUNT_DEBITED_QUESTION = "Amount debited from source account:"
 
 @typechecked
 def _has_post_account_withdrawal_questions(*, tui: "QuestionnaireApp") -> bool:
-    """Check if post-account withdrawal questions (ATM fee etc.) are present."""
+    """Check if post-account withdrawal questions (ATM fee etc.) are
+    present."""
     for input_widget in tui.inputs:
         widget = input_widget.base_widget
         if hasattr(widget, "question_data"):
@@ -566,17 +604,25 @@ def _has_exchange_rate_question(*, tui: "QuestionnaireApp") -> bool:
     for input_widget in tui.inputs:
         widget = input_widget.base_widget
         if hasattr(widget, "question_data"):
-            if widget.question_data.question == "Exchange rate (1 source = X destination):":
+            if (
+                widget.question_data.question
+                == "Exchange rate (1 source = X destination):"
+            ):
                 return True
     return False
 
 
 @typechecked
-def _get_tui_answer(tui: "QuestionnaireApp", question_str: str) -> Optional[str]:
+def _get_tui_answer(
+    tui: "QuestionnaireApp", question_str: str
+) -> Optional[str]:
     """Read a specific answer from the TUI by question string."""
     for inp in tui.inputs:
         w = inp.base_widget
-        if hasattr(w, "question_data") and w.question_data.question == question_str:
+        if (
+            hasattr(w, "question_data")
+            and w.question_data.question == question_str
+        ):
             if w.has_answer():
                 return str(w.get_answer())
     return None
@@ -621,7 +667,10 @@ def handle_post_account_withdrawal_questions(
     # Find the last "Add another account (y/n)?" position.
     last_account_idx = None
     for i, inp in enumerate(tui.inputs):
-        if inp.base_widget.question_data.question == "Add another account (y/n)?":
+        if (
+            inp.base_widget.question_data.question
+            == "Add another account (y/n)?"
+        ):
             last_account_idx = i
 
     if last_account_idx is None:
@@ -634,7 +683,7 @@ def handle_post_account_withdrawal_questions(
     ]
     if is_foreign:
         post_questions.append(withdrawal_questions.get_exchange_rate_question())
-    post_question_ids = {q.question for q in post_questions}
+    {q.question for q in post_questions}
 
     # Strip any existing post-account withdrawal questions from the rest.
     all_post_ids = {
@@ -650,11 +699,13 @@ def handle_post_account_withdrawal_questions(
         for inp in tui.inputs[: last_account_idx + 1]
     ]
     new_q_data.extend(post_questions)
-    new_q_data.extend([
-        inp.base_widget.question_data
-        for inp in tui.inputs[last_account_idx + 1 :]
-        if inp.base_widget.question_data.question not in all_post_ids
-    ])
+    new_q_data.extend(
+        [
+            inp.base_widget.question_data
+            for inp in tui.inputs[last_account_idx + 1 :]  # noqa: E203
+            if inp.base_widget.question_data.question not in all_post_ids
+        ]
+    )
 
     new_tui = create_questionnaire(
         questions=new_q_data,
@@ -672,9 +723,7 @@ def handle_post_account_withdrawal_questions(
         atm_fee_val = _get_tui_answer(new_tui, ATM_FEE_QUESTION)
         bank_fee_val = _get_tui_answer(new_tui, BANK_FEE_QUESTION)
         if amount_debited is not None:
-            fees = (
-                float(atm_fee_val) if atm_fee_val is not None else 0.0
-            ) + (
+            fees = (float(atm_fee_val) if atm_fee_val is not None else 0.0) + (
                 float(bank_fee_val) if bank_fee_val is not None else 0.0
             )
             change = float(amount_debited) - fees
@@ -682,16 +731,20 @@ def handle_post_account_withdrawal_questions(
                 w = inp.base_widget
                 if (
                     hasattr(w, "question_data")
-                    and w.question_data.question == "Change returned to account:"
+                    and w.question_data.question
+                    == "Change returned to account:"
                     and not w.has_answer()
                 ):
                     w.set_answer(change)
                     break
 
-    # Domestic balance validation: amount_debited == change + atm_fee + bank_fee.
+    # Domestic balance validation: amount_debited == change + atm_fee +
+    # bank_fee.
     if not is_foreign:
         amount_debited = _get_tui_answer(new_tui, AMOUNT_DEBITED_QUESTION)
-        change_returned = _get_tui_answer(new_tui, "Change returned to account:")
+        change_returned = _get_tui_answer(
+            new_tui, "Change returned to account:"
+        )
         atm_fee = _get_tui_answer(new_tui, ATM_FEE_QUESTION)
         bank_fee = _get_tui_answer(new_tui, BANK_FEE_QUESTION)
 
@@ -718,6 +771,19 @@ def handle_post_account_withdrawal_questions(
     return new_tui
 
 
+def _get_transactions_in_date_range(
+    transactions_per_year: Dict[int, List[Transaction]],
+    target_date: datetime,
+    date_margin: timedelta,
+) -> List[Transaction]:
+    """Filter transactions to those within *date_margin* of *target_date*."""
+    year = target_date.year
+    transactions = transactions_per_year.get(year, [])
+    start = target_date - date_margin
+    end = target_date + date_margin
+    return [t for t in transactions if start <= t.the_date <= end]
+
+
 def _try_background_withdrawal_match(
     *,
     tui,
@@ -729,16 +795,12 @@ def _try_background_withdrawal_match(
     """Search CSV transactions for a withdrawal match and pre-fill the amount.
 
     Runs after the user selects a withdrawal source account.  Looks for
-    CSV transactions near the receipt date whose amount could match.
-    If exactly one match is found, sets the default on the "Amount
-    debited from source account" question.
+    CSV transactions near the receipt date whose amount could match. If
+    exactly one match is found, sets the default on the "Amount debited
+    from source account" question.
     """
     if config is None or csv_transactions_per_account is None:
         return
-
-    from hledger_receipt_processing.matching.helper import (
-        get_transactions_in_date_range,
-    )
 
     # Collect the source account answer and the receipt date from the TUI.
     source_account_str: Optional[str] = None
@@ -778,8 +840,10 @@ def _try_background_withdrawal_match(
         return
 
     # Search within configured date margin (default 7 days).
-    day_margin = config.matching_algo.days if hasattr(config, "matching_algo") else 7
-    candidates = get_transactions_in_date_range(
+    day_margin = (
+        config.matching_algo.days if hasattr(config, "matching_algo") else 7
+    )
+    candidates = _get_transactions_in_date_range(
         transactions_per_year=txns_per_year,
         target_date=receipt_date,
         date_margin=timedelta(days=day_margin),
@@ -799,7 +863,9 @@ def _try_background_withdrawal_match(
         narrowed = []
         for txn in candidates:
             net = abs(txn.tendered_amount_out - txn.change_returned)
-            if abs(net - receipt_amount) <= amount_margin * max(receipt_amount, 0.01):
+            if abs(net - receipt_amount) <= amount_margin * max(
+                receipt_amount, 0.01
+            ):
                 narrowed.append(txn)
         if narrowed:
             candidates = narrowed
@@ -839,7 +905,9 @@ def _prefill_withdrawal_from_metadata(
 ) -> None:
     """Set withdrawal question answers from existing WithdrawalMetadata."""
     source_acct = metadata.source_account_transaction.account.to_string()
-    source_currency = metadata.source_account_transaction.account.base_currency.value
+    source_currency = (
+        metadata.source_account_transaction.account.base_currency.value
+    )
     source_amount = abs(metadata.source_account_transaction.tendered_amount_out)
 
     question_values = {
@@ -863,6 +931,425 @@ def _prefill_withdrawal_from_metadata(
         q = w.question_data.question
         if q in question_values:
             w.set_answer(question_values[q])
+
+
+BELONGS_TO_QUESTION = "Belongs to bank/accounts_without_csv:"
+CHANGE_RETURNED_QUESTION = "Change returned to account:"
+MATCH_WARNING_QUESTION = (
+    "No unique CSV match — adjust amount, date, or account (Enter to continue):"
+)
+
+
+def _validate_account_date_range(
+    *,
+    tui: "QuestionnaireApp",
+    csv_transactions_per_account: Optional[
+        Dict[AccountConfig, Dict[int, List[Transaction]]]
+    ],
+) -> Optional[DateRangeResult]:
+    """Check whether the selected account's CSV covers the receipt date.
+
+    Computes the actual min/max transaction dates across all years. Sets
+    the account widget red on error, normal on success. Updates the
+    sidebar error_display with a directional message.
+
+    Returns a DateRangeResult (or None if validation was skipped).
+    """
+    if csv_transactions_per_account is None:
+        return None
+
+    receipt_date = None
+    account_str: Optional[str] = None
+    account_inp = None
+
+    for inp in tui.inputs:
+        w = inp.base_widget
+        q = w.question_data.question
+        if q == "Receipt date and time:\n" and w.has_answer():
+            receipt_date = w.get_answer()
+        elif q == BELONGS_TO_QUESTION and w.has_answer():
+            account_str = str(w.get_answer())
+            account_inp = inp
+
+    if receipt_date is None or account_str is None or account_inp is None:
+        return None
+
+    # Find matching AccountConfig.
+    for ac, txns_per_year in csv_transactions_per_account.items():
+        if ac.account.to_string() == account_str:
+            # Flatten all transactions to find actual min/max dates.
+            all_txns = [
+                t for year_list in txns_per_year.values() for t in year_list
+            ]
+            if not all_txns:
+                account_inp.set_attr_map({None: "error"})
+                result = DateRangeResult(status="no_data")
+                _update_date_range_sidebar(
+                    tui=tui, result=result, receipt_date=receipt_date
+                )
+                return result
+
+            csv_min = min(t.the_date for t in all_txns)
+            csv_max = max(t.the_date for t in all_txns)
+
+            if receipt_date.date() > csv_max.date():
+                account_inp.set_attr_map({None: "error"})
+                result = DateRangeResult(
+                    status="too_late",
+                    csv_min=csv_min,
+                    csv_max=csv_max,
+                )
+                _update_date_range_sidebar(
+                    tui=tui,
+                    result=result,
+                    receipt_date=receipt_date,
+                )
+                return result
+
+            if receipt_date.date() < csv_min.date():
+                account_inp.set_attr_map({None: "error"})
+                result = DateRangeResult(
+                    status="too_early",
+                    csv_min=csv_min,
+                    csv_max=csv_max,
+                )
+                _update_date_range_sidebar(
+                    tui=tui,
+                    result=result,
+                    receipt_date=receipt_date,
+                )
+                return result
+
+            # Date is within CSV range.
+            account_inp.set_attr_map({None: "normal"})
+            _clear_date_range_sidebar(tui=tui)
+            return DateRangeResult(
+                status="ok",
+                csv_min=csv_min,
+                csv_max=csv_max,
+            )
+
+    # Account not in csv_transactions_per_account -> asset account.
+    _clear_date_range_sidebar(tui=tui)
+    return None
+
+
+def _update_date_range_sidebar(
+    *,
+    tui: "QuestionnaireApp",
+    result: "DateRangeResult",
+    receipt_date: datetime,
+) -> None:
+    """Show a directional date-range error in the sidebar error panel."""
+    indent = tui.indentation_spaces * " "
+    if result.status == "no_data":
+        msg = "No CSV transactions for this account."
+    elif result.status == "too_late":
+        assert result.csv_max is not None
+        days = (receipt_date.date() - result.csv_max.date()).days
+        msg = (
+            f"CSV ends at {result.csv_max:%Y-%m-%d}.\n"
+            f"{indent}Receipt date is {days} day(s) later.\n"
+            f"{indent}Update the CSV or correct the date."
+        )
+    elif result.status == "too_early":
+        assert result.csv_min is not None
+        days = (result.csv_min.date() - receipt_date.date()).days
+        msg = (
+            f"CSV starts at {result.csv_min:%Y-%m-%d}.\n"
+            f"{indent}Receipt date is {days} day(s) earlier.\n"
+            f"{indent}Update the CSV or correct the date."
+        )
+    else:
+        return
+    # error_display is an AttrMap wrapping a Pile of [header_text, msg_text].
+    tui.error_display.base_widget.contents[1][0].set_text(("error", msg))
+
+
+def _clear_date_range_sidebar(*, tui: "QuestionnaireApp") -> None:
+    """Clear any date-range error from the sidebar error panel."""
+    indent = tui.indentation_spaces * " "
+    tui.error_display.base_widget.contents[1][0].set_text(
+        ("error", f"{indent}None")
+    )
+
+
+def _try_non_withdrawal_amount_match(
+    *,
+    tui: "QuestionnaireApp",
+    config: Optional["Config"],
+    csv_transactions_per_account: Optional[
+        Dict[AccountConfig, Dict[int, List[Transaction]]]
+    ],
+) -> Optional[AmountMatchResult]:
+    """After 'Add another account = n', check if the entered amount matches a
+    CSV transaction.
+
+    Turns amount/change fields green on match, red on mismatch.  Only
+    applies to non-withdrawal receipts with CSV-backed accounts.
+
+    Returns an AmountMatchResult, or None when matching is skipped.
+    """
+    if config is None or csv_transactions_per_account is None:
+        return None
+    if _has_withdrawal_questions(tui=tui):
+        return None
+
+    receipt_date = None
+    account_str: Optional[str] = None
+    amount_paid: Optional[float] = None
+    change_returned: Optional[float] = None
+    amount_inp = None
+    change_inp = None
+
+    for inp in tui.inputs:
+        w = inp.base_widget
+        q = w.question_data.question
+        if q == "Receipt date and time:\n" and w.has_answer():
+            receipt_date = w.get_answer()
+        elif q == BELONGS_TO_QUESTION and w.has_answer():
+            account_str = str(w.get_answer())
+        elif q == AMOUNT_PAID_QUESTION and w.has_answer():
+            try:
+                amount_paid = float(w.get_answer())
+            except (ValueError, TypeError):
+                pass
+            amount_inp = inp
+        elif q == CHANGE_RETURNED_QUESTION and w.has_answer():
+            try:
+                change_returned = float(w.get_answer())
+            except (ValueError, TypeError):
+                pass
+            change_inp = inp
+
+    if (
+        receipt_date is None
+        or account_str is None
+        or amount_paid is None
+        or amount_inp is None
+    ):
+        return None
+
+    if change_returned is None:
+        change_returned = 0.0
+
+    # Find matching AccountConfig (CSV accounts only).
+    matching_ac: Optional[AccountConfig] = None
+    for ac in csv_transactions_per_account:
+        if ac.account.to_string() == account_str and ac.has_input_csv():
+            matching_ac = ac
+            break
+
+    if matching_ac is None:
+        # Asset account without CSV -- skip matching.
+        return None
+
+    txns_per_year = csv_transactions_per_account.get(matching_ac, {})
+    if not txns_per_year:
+        amount_inp.set_attr_map({None: "error"})
+        return AmountMatchResult(status="no_match", candidate_count=0)
+
+    day_margin = (
+        config.matching_algo.days if hasattr(config, "matching_algo") else 7
+    )
+    candidates = _get_transactions_in_date_range(
+        transactions_per_year=txns_per_year,
+        target_date=receipt_date,
+        date_margin=timedelta(days=day_margin),
+    )
+
+    net_amount = abs(amount_paid - change_returned)
+
+    if candidates:
+        amount_margin = (
+            config.matching_algo.amount_range
+            if hasattr(config, "matching_algo")
+            else 0.05
+        )
+        narrowed = []
+        for txn in candidates:
+            txn_net = abs(txn.tendered_amount_out - txn.change_returned)
+            if abs(txn_net - net_amount) <= amount_margin * max(
+                net_amount, 0.01
+            ):
+                narrowed.append(txn)
+        candidates = narrowed
+
+    if len(candidates) == 1:
+        # Unique match -- green.
+        amount_inp.set_attr_map({None: "matched"})
+        if change_inp is not None:
+            change_inp.set_attr_map({None: "matched"})
+        _remove_match_choice(tui=tui)
+        logger.info(
+            "Amount match: %.2f matched CSV transaction",
+            net_amount,
+        )
+        return AmountMatchResult(
+            status="matched",
+            candidate_count=1,
+            candidates=candidates,
+        )
+
+    # No match or ambiguous -- red.
+    amount_inp.set_attr_map({None: "error"})
+    if change_inp is not None:
+        change_inp.set_attr_map({None: "error"})
+
+    status = "ambiguous" if len(candidates) > 1 else "no_match"
+    logger.info(
+        "Amount match: %.2f did not uniquely match (%d candidates)",
+        net_amount,
+        len(candidates),
+    )
+
+    # Inject the match choice widget if not already present.
+    _inject_match_choice(tui=tui, candidate_count=len(candidates))
+
+    return AmountMatchResult(
+        status=status,
+        candidate_count=len(candidates),
+        candidates=candidates,
+    )
+
+
+def _inject_match_choice(
+    *,
+    tui: "QuestionnaireApp",
+    candidate_count: int,
+) -> None:
+    """Inject the 'No unique CSV match' choice widget after 'Add another
+    account (y/n)?' if not already present."""
+    # Check if already present.
+    for inp in tui.inputs:
+        w = inp if not isinstance(inp, AttrMap) else inp.base_widget
+        if (
+            hasattr(w, "question_data")
+            and w.question_data.question == MATCH_CHOICE_QUESTION
+        ):
+            return  # Already injected.
+
+    # Find insert position: after the last "Add another account (y/n)?".
+    insert_idx = None
+    for i, inp in enumerate(tui.inputs):
+        w = inp.base_widget if isinstance(inp, AttrMap) else inp
+        if (
+            hasattr(w, "question_data")
+            and w.question_data.question == "Add another account (y/n)?"
+        ):
+            insert_idx = i + 1
+
+    if insert_idx is None:
+        return  # "Add another account" not found.
+
+    # Build choice widget.
+    q_data = HorizontalMultipleChoiceQuestionData(
+        question=MATCH_CHOICE_QUESTION,
+        choices=[
+            "Correct amounts/dates",
+            "Enter matching CLI",
+        ],
+        ai_suggestions=[],
+        ans_required=True,
+        reconfigurer=True,
+        terminator=False,
+    )
+
+    widget = HorizontalMultipleChoiceWidget(question_data=q_data)
+    tui.inputs.insert(insert_idx, widget)
+    tui.questions.insert(insert_idx, q_data)
+
+    # Update pile contents.
+    pile_contents = list(tui.pile.contents[: tui.nr_of_headers])
+    for w in tui.inputs:
+        pile_contents.append((w, ("pack", None)))
+    # Re-append suggestion boxes (last 5 entries: divider, ai, divider,
+    # history, divider — but the exact count varies).  Rebuild cleanly.
+    pile_contents.extend(
+        [
+            (urwid.Divider(), ("pack", None)),
+            (
+                urwid.Columns(
+                    [
+                        (
+                            tui.descriptor_col_width,
+                            urwid.Text("AI suggestions: "),
+                        ),
+                        tui.ai_suggestion_box,
+                    ]
+                ),
+                ("pack", None),
+            ),
+            (
+                urwid.Columns(
+                    [
+                        (
+                            tui.descriptor_col_width,
+                            urwid.Text("History suggestions: "),
+                        ),
+                        tui.history_suggestion_box,
+                    ]
+                ),
+                ("pack", None),
+            ),
+        ]
+    )
+    tui.pile.contents = pile_contents
+
+
+def _remove_match_choice(*, tui: "QuestionnaireApp") -> None:
+    """Remove the match choice widget if present."""
+    indices_to_remove = []
+    for i, inp in enumerate(tui.inputs):
+        w = inp if not isinstance(inp, AttrMap) else inp.base_widget
+        if (
+            hasattr(w, "question_data")
+            and w.question_data.question == MATCH_CHOICE_QUESTION
+        ):
+            indices_to_remove.append(i)
+
+    if not indices_to_remove:
+        return
+
+    for idx in reversed(indices_to_remove):
+        del tui.inputs[idx]
+        if idx < len(tui.questions):
+            del tui.questions[idx]
+
+    # Rebuild pile contents.
+    pile_contents = list(tui.pile.contents[: tui.nr_of_headers])
+    for w in tui.inputs:
+        pile_contents.append((w, ("pack", None)))
+    pile_contents.extend(
+        [
+            (urwid.Divider(), ("pack", None)),
+            (
+                urwid.Columns(
+                    [
+                        (
+                            tui.descriptor_col_width,
+                            urwid.Text("AI suggestions: "),
+                        ),
+                        tui.ai_suggestion_box,
+                    ]
+                ),
+                ("pack", None),
+            ),
+            (
+                urwid.Columns(
+                    [
+                        (
+                            tui.descriptor_col_width,
+                            urwid.Text("History suggestions: "),
+                        ),
+                        tui.history_suggestion_box,
+                    ]
+                ),
+                ("pack", None),
+            ),
+        ]
+    )
+    tui.pile.contents = pile_contents
 
 
 @typechecked
@@ -908,7 +1395,10 @@ def get_configuration(
 
     # Handle withdrawal toggle reconfigurer.
     for question_nr, question_str, answer in reconfig_answers:
-        if question_str == WITHDRAWAL_TOGGLE_QUESTION and withdrawal_questions is not None:
+        if (
+            question_str == WITHDRAWAL_TOGGLE_QUESTION
+            and withdrawal_questions is not None
+        ):
             tui = handle_withdrawal_toggle(
                 tui=tui,
                 withdrawal_questions=withdrawal_questions,
@@ -1038,8 +1528,38 @@ def get_configuration(
             )
         preserved_answers = preserve_current_answers(tui=tui)
 
+    # Handle the "No unique CSV match" choice reconfigurer.
+    for question_nr, question_str, answer in reconfig_answers:
+        if question_str == MATCH_CHOICE_QUESTION:
+            if answer == "Correct amounts/dates":
+                # Remove the choice widget and let focus fall back
+                # to the amount field naturally.
+                _remove_match_choice(tui=tui)
+                preserved_answers = preserve_current_answers(tui=tui)
+            # "Enter matching CLI" is handled in ask_urwid_receipt.py
+            # (the while-loop detects the answer and suspends urwid).
+
     # Set focus to the next unanswered question
-    return set_default_focus_and_answers(tui, preserved_answers)
+    tui = set_default_focus_and_answers(tui, preserved_answers)
+
+    # Issue 8: Validate that the selected account's CSV covers the
+    # receipt date.  Runs last so it re-applies after any TUI rebuild
+    # (e.g. manual address questions creating new widgets).
+    _validate_account_date_range(
+        tui=tui,
+        csv_transactions_per_account=csv_transactions_per_account,
+    )
+
+    # Issue 7: Check if the entered amount matches a CSV transaction
+    # (non-withdrawal receipts only).  Runs last for the same reason.
+    if not _has_withdrawal_questions(tui=tui):
+        _try_non_withdrawal_amount_match(
+            tui=tui,
+            config=config,
+            csv_transactions_per_account=csv_transactions_per_account,
+        )
+
+    return tui
 
 
 @typechecked
@@ -1096,7 +1616,7 @@ def update_address_list(
 
     Args:
         tui: The QuestionnaireApp instance containing the input widgets.
-        account_questions: The AccountQuestions instance containing question data.
+        account_questions: The AccountQuestions instance containing question data.  # noqa: E501
         labelled_receipts: List of Receipt objects for generating shop choices.
     """
 

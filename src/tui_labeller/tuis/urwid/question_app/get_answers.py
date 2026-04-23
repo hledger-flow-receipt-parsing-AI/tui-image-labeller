@@ -10,10 +10,10 @@ from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
 from tui_labeller.tuis.urwid.input_validation.InputValidationQuestion import (
     InputValidationQuestion,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (  # noqa: E501
     HorizontalMultipleChoiceWidget,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (  # noqa: E501
     VerticalMultipleChoiceWidget,
 )
 
@@ -65,7 +65,7 @@ def get_answers(
     """Collects answers from all questions in the questionnaire.
 
     Returns:
-        Dict[str, Union[str, float, int, datetime]]: A dictionary mapping question captions
+        Dict[str, Union[str, float, int, datetime]]: A dictionary mapping question captions  # noqa: E501
             to their answers. Answer types depend on question type:
             - DateTimeQuestion: datetime
             - InputValidationQuestion: str, float, or int

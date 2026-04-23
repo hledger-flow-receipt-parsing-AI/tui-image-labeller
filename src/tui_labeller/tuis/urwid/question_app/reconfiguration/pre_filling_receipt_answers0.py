@@ -8,7 +8,7 @@ from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.prefill_receipt.helper import _get_exchanged_item
 from tui_labeller.tuis.urwid.question_app.generator import create_questionnaire
-from tui_labeller.tuis.urwid.question_app.reconfiguration.adding_questions import (
+from tui_labeller.tuis.urwid.question_app.reconfiguration.adding_questions import (  # noqa: E501
     create_new_account_questions_to_add,
     get_last_account_question_index,
 )
@@ -45,11 +45,11 @@ def build_prefilled_tui(
     account question blocks for each transaction in the receipt.
 
     Args:
-        prefilled_receipt (Any): The pre-filled receipt object containing net_bought_items with account transactions.
-        labelled_receipts (List[Receipt]): List of labelled receipts for the QuestionnaireApp.
+        prefilled_receipt (Any): The pre-filled receipt object containing net_bought_items with account transactions.  # noqa: E501
+        labelled_receipts (List[Receipt]): List of labelled receipts for the QuestionnaireApp.  # noqa: E501
 
     Returns:
-        QuestionnaireApp: The constructed QuestionnaireApp with questions for the pre-filled receipt.
+        QuestionnaireApp: The constructed QuestionnaireApp with questions for the pre-filled receipt.  # noqa: E501
     """
     net_bought_item = _get_exchanged_item(prefilled_receipt)
     account_transactions = net_bought_item.account_transactions
@@ -57,7 +57,8 @@ def build_prefilled_tui(
     # Template for account questions
     template = AccountQuestions(
         account_infos_str=account_infos_str,
-        accounts_without_csv=accounts_without_csv,  # TODO: verify these can be empty.
+        # TODO: verify these can be empty.
+        accounts_without_csv=accounts_without_csv,
     )
 
     fixed_fields_count = len(BaseQuestions().base_questions)
@@ -102,7 +103,7 @@ def count_account_question_sets(
     """Count the number of account question sets in current_questions.
 
     Args:
-        current_questions: List of current questions, including account questions.
+        current_questions: List of current questions, including account questions.  # noqa: E501
 
     Returns:
         Number of account question sets (each set assumed to have 5 questions).
@@ -127,7 +128,8 @@ def add_missing_account_questions(
     *,
     account_infos_str: List[str],
     accounts_without_csv: set[str],
-    account_transactions: List[Any],  # Assuming transaction has 'account' field
+    # Assuming transaction has 'account' field
+    account_transactions: List[Any],
     template: AccountQuestions,
     fixed_fields_count: int,
     current_questions: List[
@@ -149,13 +151,13 @@ def add_missing_account_questions(
     """Add account question sets to match the number of transactions.
 
     Args:
-        account_transactions: List of transactions, each requiring one set of account questions.
+        account_transactions: List of transactions, each requiring one set of account questions.  # noqa: E501
         template: Template for generating account questions.
         fixed_fields_count: Number of base questions before account questions.
-        current_questions: Current list of questions, including one set of account questions by default.
+        current_questions: Current list of questions, including one set of account questions by default.  # noqa: E501
 
     Returns:
-        Updated list of questions with account question sets matching the number of transactions.
+        Updated list of questions with account question sets matching the number of transactions.  # noqa: E501
     """
     # Count existing account question sets
     existing_sets = count_account_question_sets(current_questions)
@@ -183,7 +185,7 @@ def add_missing_account_questions(
             and transaction.account.to_string() not in accounts_without_csv
         ):
             raise ValueError(
-                f"The transaction.account:{transaction.account.to_string()} from"
+                f"The transaction.account:{transaction.account.to_string()} from"  # noqa: E501
                 " the prefilled receipt should be available in the accounts"
                 f" loaded from hledger:{account_infos_str}"
             )
@@ -203,7 +205,7 @@ def add_missing_account_questions(
         current_questions = (
             current_questions[: last_account_idx + 1]
             + new_account_questions_to_add
-            + current_questions[last_account_idx + 1 :]
+            + current_questions[last_account_idx + 1 :]  # noqa: E203
         )
 
     # Verify the final number of account question sets
@@ -240,11 +242,11 @@ def answer_prefilled_account_questions(
     receipt.
 
     Args:
-        pre_filled_receipt_answers (List[Union[None, Tuple[str, Any]]]): A list of pre-filled answers for
-            the receipt, where each element is either None or a tuple of (question_text, answer).
-        nr_of_account_transactions (int): The number of account transactions to include.
-        prefilled_receipt (Any): The receipt object containing net_bought_items with account transactions.
-        labelled_receipts (List[Receipt]): List of labelled receipts for creating the QuestionnaireApp.
+        pre_filled_receipt_answers (List[Union[None, Tuple[str, Any]]]): A list of pre-filled answers for  # noqa: E501
+            the receipt, where each element is either None or a tuple of (question_text, answer).  # noqa: E501
+        nr_of_account_transactions (int): The number of account transactions to include.  # noqa: E501
+        prefilled_receipt (Any): The receipt object containing net_bought_items with account transactions.  # noqa: E501
+        labelled_receipts (List[Receipt]): List of labelled receipts for creating the QuestionnaireApp.  # noqa: E501
 
     Returns:
         None: The function modifies the QuestionnaireApp instance in place.
@@ -253,7 +255,7 @@ def answer_prefilled_account_questions(
     # Copy prefilled_answers into new array with answers:
     receipt_answers: List[Union[None, Tuple[str, Any]]] = (
         initialize_receipt_answers(
-            prefilled_answers_to_base_questions=prefilled_answers_to_base_questions,
+            prefilled_answers_to_base_questions=prefilled_answers_to_base_questions,  # noqa: E501
             nr_of_account_transactions=nr_of_account_transactions,
         )
     )
@@ -284,18 +286,19 @@ def answer_prefilled_account_questions(
         nr_of_account_transactions * account_questions_per_transaction
     )
 
-    # Create new AccountQuestions for each transaction and update pre_filled_receipt_answers
+    # Create new AccountQuestions for each transaction and update
+    # pre_filled_receipt_answers
     answer_idx = fixed_fields_count
     if net_bought_item:
         answer_idx = set_answers(
-            bought_and_returned_transactions=net_bought_item.account_transactions,
+            bought_and_returned_transactions=net_bought_item.account_transactions,  # noqa: E501
             new_account_end_idx=new_account_end_idx,
             answer_idx=answer_idx,
             receipt_answers=receipt_answers,
         )
     if net_returned_item:
         answer_idx = set_answers(
-            bought_and_returned_transactions=net_returned_item.account_transactions,
+            bought_and_returned_transactions=net_returned_item.account_transactions,  # noqa: E501
             new_account_end_idx=new_account_end_idx,
             answer_idx=answer_idx,
             receipt_answers=receipt_answers,
@@ -380,11 +383,11 @@ def initialize_receipt_answers(
     based on the number of account transactions.
 
     Args:
-        prefilled_answers_to_base_questions (List[Union[None, Tuple[str, Any]]]): The pre-filled answers for base questions.
-        nr_of_account_transactions (int): The number of account transactions to account for in the answer list.
+        prefilled_answers_to_base_questions (List[Union[None, Tuple[str, Any]]]): The pre-filled answers for base questions.  # noqa: E501
+        nr_of_account_transactions (int): The number of account transactions to account for in the answer list.  # noqa: E501
 
     Returns:
-        List[Union[None, Tuple[str, Any]]]: A new list initialized with base question answers and extended with None
+        List[Union[None, Tuple[str, Any]]]: A new list initialized with base question answers and extended with None  # noqa: E501
         for account transaction and remaining questions.
     """
     fixed_fields_count = len(BaseQuestions().base_questions)
@@ -394,7 +397,7 @@ def initialize_receipt_answers(
         ).account_questions
     )
     # TODO: create EndingQuestions object.
-    # total_required_answers = fixed_fields_count + (nr_of_account_transactions * account_questions_per_transaction) + len(EndingQuestions().ending_questions)
+    # total_required_answers = fixed_fields_count + (nr_of_account_transactions * account_questions_per_transaction) + len(EndingQuestions().ending_questions)  # noqa: E501
     total_required_answers = (
         fixed_fields_count
         + (nr_of_account_transactions * account_questions_per_transaction)

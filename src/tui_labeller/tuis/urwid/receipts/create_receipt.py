@@ -3,9 +3,6 @@ from pprint import pprint
 from typing import Any, List, Optional, Tuple, Union
 
 from hledger_config.config.load_config import Config
-from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
-    HledgerFlowAccountInfo,
-)
 from hledger_core.TransactionObjects.Address import Address
 from hledger_core.TransactionObjects.ExchangedItem import ExchangedItem
 from hledger_core.TransactionObjects.Receipt import (
@@ -13,6 +10,9 @@ from hledger_core.TransactionObjects.Receipt import (
     WithdrawalMetadata,
 )
 from hledger_core.TransactionObjects.ShopId import ShopId
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (  # noqa: E501
+    HledgerFlowAccountInfo,
+)
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
@@ -21,10 +21,10 @@ from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
 from tui_labeller.tuis.urwid.input_validation.InputValidationQuestion import (
     InputValidationQuestion,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (  # noqa: E501
     HorizontalMultipleChoiceWidget,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (  # noqa: E501
     VerticalMultipleChoiceWidget,
 )
 from tui_labeller.tuis.urwid.receipts.account_parser import (
@@ -57,7 +57,7 @@ def build_receipt_from_answers(
     tui.get_answers()
 
     Args:
-        final_answers: Dictionary containing question widgets as keys and their answers as values
+        final_answers: Dictionary containing question widgets as keys and their answers as values  # noqa: E501
 
     Returns:
         Receipt object with mapped values
@@ -167,7 +167,8 @@ def build_receipt_from_answers(
                 and "Select Shop Address:" in widget.question_data.question
             ):
 
-                # Assuming the extra_data contains shop_ids with address information
+                # Assuming the extra_data contains shop_ids with address
+                # information
                 shop_id_data = widget.question_data.extra_data.get(
                     "shop_ids", {}
                 )
@@ -264,14 +265,14 @@ def get_shop_id_from_choice(choice: str, shop_ids: List[ShopId]) -> ShopId:
     found.
 
     Args:
-        choice: The choice string (e.g., 'Lidl: Urkhovenseweg, 16, 5641KE, Eindhoven, Netherlands').
+        choice: The choice string (e.g., 'Lidl: Urkhovenseweg, 16, 5641KE, Eindhoven, Netherlands').  # noqa: E501
         shop_ids: List of ShopId objects to search through.
 
     Returns:
         ShopId: The matching ShopId object.
 
     Raises:
-        ValueError: If no matching ShopId is found or if multiple matches are found.
+        ValueError: If no matching ShopId is found or if multiple matches are found.  # noqa: E501
     """
     # Handle the 'manual address' case
     if choice == "manual address":

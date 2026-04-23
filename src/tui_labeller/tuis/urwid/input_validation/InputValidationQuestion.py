@@ -49,7 +49,7 @@ class InputValidationQuestion(urwid.Edit):
 
         Args:
             ch: Character to check (string of length 1)
-            mode: InputType enum - LETTERS for a-Z/:/* or NUMBERS for digits and .
+            mode: InputType enum - LETTERS for a-Z/:/* or NUMBERS
 
         Returns:
             bool: True if character is valid for the specified mode
@@ -116,13 +116,14 @@ class InputValidationQuestion(urwid.Edit):
         """Allow the user to go up and change an answer unless at the first
         question.
 
-        If the user is not at the first question, they can move to the previous question
-        even if the current answer is invalid. However, if the user is at the first question,
-        they are not allowed to go back to prevent looping to the last question.
+        If the user is not at the first question, they can
+        move to the previous question even if the current
+        answer is invalid. However, if the user is at the
+        first question, they are not allowed to go back.
 
         Returns:
-            str: "previous_question" if allowed to proceed to the previous question.
-            None: If the answer is required and empty, highlighting is set to error.
+            str: "previous_question" if allowed to proceed.
+            None: If required and empty, set to error.
         """
         if self.edit_text.strip():  # Check if current input has text.
             self.owner.set_attr_map({None: "normal"})
@@ -304,17 +305,16 @@ class InputValidationQuestion(urwid.Edit):
                 - int for InputType.INTEGER
 
         Raises:
-            ValueError: If the input cannot be converted to the specified type or is empty when required
+            ValueError: If the input cannot be converted
+                to the specified type or is empty when required
         """
         current_text = self.get_edit_text().strip()
 
         # Check if answer is required but empty
         if self.question_data.ans_required and not current_text:
 
-            raise ValueError(
-                "Answer is required but input is empty for"
-                f" '{self.question_data.question.replace('\n','')}'"
-            )
+            q = self.question_data.question.replace("\n", "")
+            raise ValueError(f"Answer is required but input is empty for '{q}'")
 
         # Return empty string if no input and not required
         if not current_text:
@@ -346,7 +346,8 @@ class InputValidationQuestion(urwid.Edit):
         """Checks if a valid answer can be obtained without errors.
 
         Returns:
-            bool: True if get_answer() would return a valid result without raising an error,
+            bool: True if get_answer() would return a valid
+                result without raising an error,
                 False otherwise.
         """
 
@@ -361,13 +362,15 @@ class InputValidationQuestion(urwid.Edit):
         """Sets the input value based on the input_type.
 
         Args:
-            value: The value to set. Must match the expected type based on input_type:
-                - str for InputType.LETTERS, InputType.LETTERS_SEMICOLON, InputType.LETTERS_AND_SPACE, or InputType.LETTERS_AND_NRS
+            value: The value to set. Must match the
+                expected type based on input_type:
+                - str for LETTERS, LETTERS_SEMICOLON,
+                  LETTERS_AND_SPACE, or LETTERS_AND_NRS
                 - float for InputType.FLOAT
                 - int for InputType.INTEGER
 
         Raises:
-            ValueError: If the value type does not match the expected input_type or is invalid.
+            ValueError: If the value type does not match.
         """
         # Validate input based on input_type
         if self.input_type in [
@@ -416,7 +419,8 @@ class InputValidationQuestion(urwid.Edit):
             self.history_store[question_id].append(str(value))
 
         # Update address history if this is the categories question
-        if "\nbookkeeping expense category:" in question_id.lower():
+        cat_id = "\nbookkeeping expense category:"
+        if cat_id in question_id.lower():
             address_question_id = None
             if hasattr(self, "questions"):
                 for q in self.questions:

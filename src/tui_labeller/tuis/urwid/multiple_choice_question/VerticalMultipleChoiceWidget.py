@@ -16,7 +16,6 @@ from tui_labeller.tuis.urwid.question_data_classes import (
     VerticalMultipleChoiceQuestionData,
 )
 
-
 MAX_VISIBLE_ADDRESSES = 12
 
 
@@ -165,8 +164,8 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         question.
 
         Returns:
-            str: "previous_question" if allowed to proceed to the previous question.
-            None: If the answer is required and empty, highlighting is set to error.
+            str: "previous_question" if allowed to proceed to the previous question.  # noqa: E501
+            None: If the answer is required and empty, highlighting is set to error.  # noqa: E501
         """
         if self.edit_text.strip():  # Check if current input has text.
             self.owner.set_attr_map({None: "normal"})
@@ -312,7 +311,8 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
             return None
 
         elif key in ("delete", "backspace"):
-            # Handle backspace/delete by calling super() first to update the text
+            # Handle backspace/delete by calling super() first to update the
+            # text
             result = super().keypress(size, key)
             # Update caption to show the full batch question
             self.set_caption(self._get_batch_caption())
@@ -368,8 +368,9 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
             if value == index:
                 return True
 
-            # Partial match: choice starts with value_str, but only if choice is not preceded by other digits
-            # if choice.startswith(value_str) and (len(choice) == len(value_str) or choice[len(value_str)].isdigit()):
+            # Partial match: choice starts with value_str, but only if choice is not preceded by other digits  # noqa: E501
+            # if choice.startswith(value_str) and (len(choice) == len(value_str)
+            # or choice[len(value_str)].isdigit()):
             if str(index).startswith(str(value)):
 
                 return True
@@ -421,7 +422,7 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         text is not empty.
 
         Returns:
-            bool: True if get_answer() would return a valid result without raising an error
+            bool: True if get_answer() would return a valid result without raising an error  # noqa: E501
                 and edit text is not empty, False otherwise.
         """
         if not self.get_edit_text():  # Check if edit text is empty
@@ -446,7 +447,7 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
                 - int: The index of the choice in question.choices.
 
         Raises:
-            ValueError: If the value is not a valid choice or index, or if the type is incorrect.
+            ValueError: If the value is not a valid choice or index, or if the type is incorrect.  # noqa: E501
         """
         if isinstance(value, str):
             # Check if the string is a valid choice
@@ -525,5 +526,6 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
             try:
                 self.set_answer(current_answer)
             except ValueError:
-                # If the answer can't be set (e.g., due to index issues), clear it
+                # If the answer can't be set (e.g., due to index issues), clear
+                # it
                 self.set_edit_text("")

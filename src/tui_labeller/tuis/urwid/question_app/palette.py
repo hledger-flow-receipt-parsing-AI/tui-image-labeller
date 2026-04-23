@@ -30,4 +30,5 @@ def setup_palette() -> List[tuple]:
         ("text", "white", "black"),
         ("input", "light cyan", "black"),
         ("starred", "light green", "black"),  # Add starred style
+        ("matched", "light green", "black"),  # CSV amount match success
     ]

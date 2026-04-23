@@ -5,8 +5,10 @@ import os
 from argparse import ArgumentParser, Namespace
 from typing import List, Tuple
 
-from hledger_config.dir_reading_and_writing import assert_dir_exists
-from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (
+from hledger_config.dir_reading_and_writing import (  # noqa: F811
+    assert_dir_exists,
+)
+from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_transactions import (  # noqa: E501
     HledgerFlowAccountInfo,
 )
 from typeguard import typechecked
@@ -50,7 +52,7 @@ def create_arg_parser() -> argparse.ArgumentParser:
         required=True,
         help=(
             "Account info in format"
-            " receipt_owner_account_holder:receipt_owner_bank:receipt_owner_account_holder_type,"
+            " holder:bank:type,"
             " multiple separated by commas."
         ),
     )
@@ -84,7 +86,7 @@ def assert_file_exists(*, filepath: str) -> None:
 
 
 @typechecked
-def assert_dir_exists(*, dirpath: str) -> None:
+def assert_dir_exists(*, dirpath: str) -> None:  # noqa: F811
     """Asserts that the given directory exists.
 
     Args:
@@ -129,7 +131,7 @@ def verify_args(
     return args, categories, accounts
 
 
-from typing import List, Tuple
+from typing import List, Tuple  # noqa: E402, F811
 
 
 @typechecked

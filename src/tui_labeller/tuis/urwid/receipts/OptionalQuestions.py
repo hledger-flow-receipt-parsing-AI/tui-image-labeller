@@ -53,14 +53,11 @@ class OptionalQuestions:
                         [
                             urwid.Text(("navigation", "Navigation")),
                             urwid.Text("Q          - quit"),
+                            urwid.Text("Up/Down    - scroll through addresses"),
+                            urwid.Text("Type a number to select that answer."),
                             urwid.Text(
-                                "Up/Down    - scroll through addresses"
-                            ),
-                            urwid.Text(
-                                "Type a number to select that answer."
-                            ),
-                            urwid.Text(
-                                "Enter      - confirm choice, goto next question."
+                                "Enter      - confirm choice, goto next"
+                                " question."
                             ),
                         ]
                     ),

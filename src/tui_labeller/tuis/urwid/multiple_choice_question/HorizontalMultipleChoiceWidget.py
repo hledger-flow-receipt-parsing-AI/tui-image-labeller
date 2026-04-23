@@ -40,7 +40,8 @@ class HorizontalMultipleChoiceWidget(urwid.WidgetWrap):
                     max_prob = suggestion.probability
                     auto_select_label = suggestion.question_data
 
-        # Create radio buttons and AI suggestion text for each choice in question.choices
+        # Create radio buttons and AI suggestion text for each choice in
+        # question.choices
         for i, choice in enumerate(
             self.question_data.choices
         ):  # Ensures all choices are included
@@ -58,13 +59,13 @@ class HorizontalMultipleChoiceWidget(urwid.WidgetWrap):
             if self.ai_suggestions:  # Check if there are any suggestions at all
                 for suggestion in self.ai_suggestions:
                     if suggestion.question_data == choice:
+                        prob = suggestion.probability
+                        ai_s = suggestion.ai_suggestions
                         suggestion_texts.append(
                             urwid.Text(
                                 (
                                     "ai_suggestion",
-                                    (
-                                        f"{suggestion.probability:.2f} {suggestion.ai_suggestions}"
-                                    ),
+                                    f"{prob:.2f} {ai_s}",
                                 ),
                                 align="left",
                             )
@@ -127,7 +128,8 @@ class HorizontalMultipleChoiceWidget(urwid.WidgetWrap):
     def _handle_navigation_keys(self, key):
         """Handle Enter, Tab, and Shift+Tab key navigation."""
 
-        # TODO: distinguish moving forward, backward, if forward check if has answer.
+        # TODO: distinguish moving forward, backward, if forward check if has
+        # answer.
         selected_ans_col = self.get_answer_in_focus()
         if key == "tab":
             return self._handle_tab(selected_ans_col)
@@ -215,16 +217,19 @@ class HorizontalMultipleChoiceWidget(urwid.WidgetWrap):
     def _update_selection(self, selected_ans_col):
         """Helper method to update radio button states and selection."""
         for i, widget in enumerate(self.choice_widgets):
-            # Iterate over each choice widget (e.g., radio button options) with its index
+            # Iterate over each choice widget (e.g., radio button options) with
+            # its index
             radio = widget.contents[0][0].base_widget
             # Extract the actual RadioButton widget from the nested structure
 
             if i == selected_ans_col:
                 # If this widget corresponds to the selected answer
                 radio.set_state(True, do_callback=False)
-                # Select it by setting its state to True, without triggering callbacks
+                # Select it by setting its state to True, without triggering
+                # callbacks
                 self.selected = radio.label
-                # Store the label of the selected radio button as the current selection
+                # Store the label of the selected radio button as the current
+                # selection
             else:
                 # For all other radio buttons
                 radio.set_state(False, do_callback=False)
@@ -285,7 +290,7 @@ class HorizontalMultipleChoiceWidget(urwid.WidgetWrap):
         question.
 
         Args:
-            value: The choice to select. Must be one of the valid choices in question.choices.
+            value: The choice to select. Must be one of the valid choices in question.choices.  # noqa: E501
 
         Raises:
             ValueError: If the provided value is not a valid choice.

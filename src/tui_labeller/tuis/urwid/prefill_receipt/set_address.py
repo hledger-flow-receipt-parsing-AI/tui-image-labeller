@@ -8,13 +8,13 @@ from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.input_validation.InputValidationQuestion import (
     InputValidationQuestion,
 )
-from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (
+from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidget import (  # noqa: E501
     VerticalMultipleChoiceWidget,
 )
 from tui_labeller.tuis.urwid.prefill_receipt.helper import (
     get_number_of_account_transactions,
 )
-from tui_labeller.tuis.urwid.question_app.reconfiguration.reconfiguration import (
+from tui_labeller.tuis.urwid.question_app.reconfiguration.reconfiguration import (  # noqa: E501
     handle_manual_address_questions,
     is_at_address_selector,
     preserve_current_answers,
@@ -118,7 +118,9 @@ def ensure_manual_address_questions_are_added_to_tui(
     optional_questions = OptionalQuestions(labelled_receipts=[])
     preserved_answers = preserve_current_answers(tui=tui)
     # Handle manual address questions if the address selector is focused
-    is_address_selector_focused: bool = is_at_address_selector(tui=tui)
+    _is_address_selector_focused: bool = is_at_address_selector(  # noqa: F841
+        tui=tui
+    )
     # if is_address_selector_focused:
     if True:
         new_tui = handle_manual_address_questions(

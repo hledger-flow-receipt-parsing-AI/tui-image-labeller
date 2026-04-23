@@ -3,8 +3,8 @@ def write_to_file(*, filename, content, append=False):
 
     Args:
         filename (str): Name of the file to write to
-        content: Content to write (string, list, or any object with __str__)
-        append (bool): If True, append to existing file; if False, overwrite (default: False)
+        content: Content to write (string, list, or any object)
+        append (bool): If True, append; if False, overwrite
     """
     mode = "a" if append else "w"
     with open(filename, mode) as file:

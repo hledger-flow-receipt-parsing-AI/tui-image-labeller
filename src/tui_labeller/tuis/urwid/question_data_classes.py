@@ -1,15 +1,9 @@
 from typing import Dict, List, Optional, Union
 
+from hledger_core.AISuggestion import AISuggestion  # noqa: F401
 from urwid import AttrMap
 
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType
-
-
-class AISuggestion:
-    def __init__(self, question: str, probability: float, model_name: str):
-        self.question: str = question
-        self.probability: float = probability
-        self.ai_suggestions: str = model_name
 
 
 class HistorySuggestion:
@@ -31,7 +25,7 @@ class DateQuestionData:
     ):
         self.question = question
         self.date_only = date_only
-        self.ai_suggestions: AISuggestion = ai_suggestions
+        self.ai_suggestions: List[AISuggestion] = ai_suggestions
         self.ans_required: bool = ans_required
         self.reconfigurer: bool = reconfigurer
         self.terminator: bool = terminator

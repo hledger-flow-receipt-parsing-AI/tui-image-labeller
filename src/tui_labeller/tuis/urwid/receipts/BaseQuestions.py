@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from typeguard import typechecked
 
@@ -6,7 +6,6 @@ from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.question_data_classes import (
     AISuggestion,
     DateQuestionData,
-    HistorySuggestion,
     HorizontalMultipleChoiceQuestionData,
     InputValidationQuestionData,
 )
@@ -23,7 +22,9 @@ def validate_category(value: str) -> Optional[str]:
 class BaseQuestions:
     def __init__(
         self,
+        ai_suggestions: Optional[Dict[str, List[AISuggestion]]] = None,
     ):
+        self._ai = ai_suggestions or {}
         self.base_questions = self.create_base_questions()
         self.verify_unique_questions(self.base_questions)
 
@@ -59,11 +60,7 @@ class BaseQuestions:
         return DateQuestionData(
             question="Receipt date and time:\n",
             date_only=False,
-            ai_suggestions=[
-                AISuggestion("2025-03-17 14:30", 0.92, "TimeMaster"),
-                AISuggestion("2025-03-17 09:00", 0.88, "TimeMaster"),
-                AISuggestion("2025-03-18 12:00", 0.80, "ChronoAI"),
-            ],
+            ai_suggestions=self._ai.get("receipt_date", []),
             ans_required=True,
             reconfigurer=False,
             terminator=False,
@@ -74,12 +71,8 @@ class BaseQuestions:
         return InputValidationQuestionData(
             question="\nBookkeeping expense category:",
             input_type=InputType.LETTERS_SEMICOLON,
-            ai_suggestions=[],
-            history_suggestions=[
-                HistorySuggestion("pear", 5),
-                HistorySuggestion("peach", 3),
-                HistorySuggestion("apple", 2),
-            ],
+            ai_suggestions=self._ai.get("category", []),
+            history_suggestions=[],
             ans_required=True,
             reconfigurer=True,
             terminator=False,

@@ -53,6 +53,7 @@ from tui_labeller.tuis.urwid.question_app.reconfiguration.reconfiguration import
     MATCH_CHOICE_QUESTION,
     get_configuration,
 )
+from tui_labeller.tuis.urwid.question_data_classes import AISuggestion
 from tui_labeller.tuis.urwid.QuestionnaireApp import QuestionnaireApp
 from tui_labeller.tuis.urwid.receipts.AccountQuestions import AccountQuestions
 from tui_labeller.tuis.urwid.receipts.BaseQuestions import (
@@ -308,6 +309,101 @@ def _clear_matching_cli_answer(tui: QuestionnaireApp) -> None:
             w.clear_answer()
 
 
+def _log_ai_corrections(
+    config: Config,
+    ai_suggestions: dict[str, list[AISuggestion]],
+    final_answers: list,
+    image_path: str | None = None,
+) -> None:
+    """Log user corrections to AI suggestions for feedback learning."""
+    if not ai_suggestions:
+        return
+    try:
+        from hledger_ai.feedback.correction_logger import CorrectionLogger
+
+        feedback_dir = (
+            config.ai.feedback_dir if config.ai else "~/.hledger-ai/feedback"
+        )
+        cl = CorrectionLogger(feedback_dir=feedback_dir)
+        user_answers: dict[str, str] = {}
+        for widget, answer in final_answers:
+            qid = getattr(
+                getattr(widget, "question_data", None),
+                "question_id",
+                None,
+            )
+            if qid is None:
+                # Fallback: use the question text as key.
+                qid = getattr(
+                    getattr(widget, "question_data", None),
+                    "question",
+                    None,
+                )
+            if qid is not None:
+                user_answers[qid] = str(answer)
+
+        cl.log_receipt_corrections(
+            ai_suggestions=ai_suggestions,
+            user_answers=user_answers,
+            image_path=image_path,
+        )
+    except ImportError:
+        pass
+    except Exception:
+        logger.debug("Failed to log AI corrections", exc_info=True)
+
+
+def _flatten_category_hierarchy(d: dict, prefix: str = "") -> list[str]:
+    """Flatten a nested category dict into colon-separated paths."""
+    paths: list[str] = []
+    for k, v in d.items():
+        path = f"{prefix}:{k}" if prefix else k
+        paths.append(path)
+        if isinstance(v, dict) and v:
+            paths.extend(_flatten_category_hierarchy(v, path))
+    return paths
+
+
+def _get_ai_suggestions(
+    config: Config,
+    image_path: str,
+) -> dict[str, list[AISuggestion]]:
+    """Run the AI extraction pipeline and return suggestions for the TUI.
+
+    Returns an empty dict if hledger-ai is not installed or Ollama is
+    unavailable.  Works with or without an explicit ``ai:`` section in
+    the config (uses defaults when absent).
+    """
+    try:
+        from hledger_ai.ai_receipt_suggester import AIReceiptSuggester
+        from hledger_ai.get_models import build_extraction_pipeline
+
+        ai = config.ai
+
+        # Extract flat category list from config for the LLM classifier.
+        category_tree: list[str] = []
+        ns = getattr(config, "category_namespace", None)
+        if ns is not None:
+            hierarchy = getattr(ns, "_hierarchy", None)
+            if isinstance(hierarchy, dict):
+                category_tree = _flatten_category_hierarchy(hierarchy)
+
+        pipeline = build_extraction_pipeline(
+            ollama_url=ai.ollama_url if ai else "http://localhost:11434",
+            vlm_model=ai.vlm_model if ai else "qwen3-vl:2b",
+            text_model=ai.text_model if ai else "qwen3:0.6b",
+            category_tree=category_tree,
+        )
+        suggester = AIReceiptSuggester(pipeline=pipeline)
+        return suggester.suggest(image_path=image_path)
+    except ImportError:
+        logger.debug("hledger-ai not installed; skipping AI suggestions")
+        return {}
+    except Exception:
+        logger.exception("AI suggestion pipeline failed")
+        return {}
+
+
 @typechecked
 def build_receipt_from_urwid(
     *,
@@ -321,6 +417,14 @@ def build_receipt_from_urwid(
         dict[AccountConfig, dict[int, list[Transaction]]]
     ) = None,
 ) -> Receipt:
+    # Run AI extraction pipeline for suggestions (non-blocking fallback).
+    ai_suggestions: dict[str, list[AISuggestion]] = {}
+    if raw_receipt_img_filepaths:
+        ai_suggestions = _get_ai_suggestions(
+            config=config,
+            image_path=raw_receipt_img_filepaths[0],
+        )
+
     account_infos_str: list[str] = list(
         {x.to_colon_separated_string() for x in hledger_account_infos}
     )
@@ -332,8 +436,11 @@ def build_receipt_from_urwid(
         account_infos_str=account_infos_str,
         accounts_without_csv=accounts_without_csv,
     )
-    base_questions = BaseQuestions()
-    optional_questions = OptionalQuestions(labelled_receipts=labelled_receipts)
+    base_questions = BaseQuestions(ai_suggestions=ai_suggestions)
+    optional_questions = OptionalQuestions(
+        labelled_receipts=labelled_receipts,
+        ai_suggestions=ai_suggestions,
+    )
 
     tui: QuestionnaireApp = create_questionnaire(
         questions=base_questions.base_questions
@@ -376,6 +483,18 @@ def build_receipt_from_urwid(
                     str | float | int | datetime,
                 ]
             ] = get_answers(inputs=tui.inputs)
+
+            # Log corrections where user overrode AI suggestions.
+            _log_ai_corrections(
+                config=config,
+                ai_suggestions=ai_suggestions,
+                final_answers=final_answers,
+                image_path=(
+                    raw_receipt_img_filepaths[0]
+                    if raw_receipt_img_filepaths
+                    else None
+                ),
+            )
 
             return build_receipt_from_answers(
                 config=config,

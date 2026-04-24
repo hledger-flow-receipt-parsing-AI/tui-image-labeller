@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import urwid
 from hledger_core.TransactionObjects.Receipt import Receipt
@@ -10,6 +10,7 @@ from tui_labeller.tuis.urwid.question_app.addresses.update_addresses import (
     get_initial_complete_list,
 )
 from tui_labeller.tuis.urwid.question_data_classes import (
+    AISuggestion,
     HorizontalMultipleChoiceQuestionData,
     InputValidationQuestionData,
     VerticalMultipleChoiceQuestionData,
@@ -21,9 +22,11 @@ class OptionalQuestions:
         self,
         labelled_receipts: List[Receipt],
         category: Optional[str] = None,
+        ai_suggestions: Optional[Dict[str, List[AISuggestion]]] = None,
     ):
         self.labelled_receipts = labelled_receipts
         self.category = category
+        self._ai = ai_suggestions or {}
         self.optional_questions = self.create_base_questions(
             labelled_receipts=labelled_receipts, category=category
         )
@@ -68,7 +71,7 @@ class OptionalQuestions:
             InputValidationQuestionData(
                 question="\nSubtotal (Optional, press enter to skip):\n",
                 input_type=InputType.FLOAT,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("subtotal", []),
                 history_suggestions=[],
                 ans_required=False,
                 reconfigurer=False,
@@ -77,7 +80,7 @@ class OptionalQuestions:
             InputValidationQuestionData(
                 question="\nTotal tax (Optional, press enter to skip):\n",
                 input_type=InputType.FLOAT,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("total_tax", []),
                 history_suggestions=[],
                 ans_required=False,
                 reconfigurer=False,
@@ -117,7 +120,7 @@ class OptionalQuestions:
             InputValidationQuestionData(
                 question="\nShop name:\n",
                 input_type=InputType.LETTERS,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("shop_name", []),
                 history_suggestions=[],
                 ans_required=False,
                 reconfigurer=False,
@@ -127,7 +130,7 @@ class OptionalQuestions:
             InputValidationQuestionData(
                 question="Shop street:",
                 input_type=InputType.LETTERS_AND_SPACE,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("shop_street", []),
                 history_suggestions=[],
                 ans_required=False,
                 reconfigurer=False,
@@ -137,7 +140,7 @@ class OptionalQuestions:
             InputValidationQuestionData(
                 question="Shop house nr.:",
                 input_type=InputType.LETTERS_AND_NRS,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("shop_house_nr", []),
                 history_suggestions=[],
                 ans_required=False,
                 reconfigurer=False,
@@ -147,7 +150,7 @@ class OptionalQuestions:
             InputValidationQuestionData(
                 question="Shop zipcode:",
                 input_type=InputType.LETTERS_AND_NRS,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("shop_zipcode", []),
                 history_suggestions=[],
                 ans_required=False,
                 reconfigurer=False,
@@ -157,7 +160,7 @@ class OptionalQuestions:
             InputValidationQuestionData(
                 question="Shop City:",
                 input_type=InputType.LETTERS,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("shop_city", []),
                 history_suggestions=[],
                 ans_required=False,
                 reconfigurer=False,
@@ -167,7 +170,7 @@ class OptionalQuestions:
             InputValidationQuestionData(
                 question="Shop country:",
                 input_type=InputType.LETTERS,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("shop_country", []),
                 history_suggestions=[],
                 ans_required=False,
                 reconfigurer=False,

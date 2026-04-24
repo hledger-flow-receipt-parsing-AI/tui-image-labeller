@@ -38,7 +38,7 @@ class HorizontalMultipleChoiceWidget(urwid.WidgetWrap):
             for suggestion in self.ai_suggestions:
                 if suggestion.probability > max_prob:
                     max_prob = suggestion.probability
-                    auto_select_label = suggestion.question_data
+                    auto_select_label = suggestion.question
 
         # Create radio buttons and AI suggestion text for each choice in
         # question.choices
@@ -58,9 +58,9 @@ class HorizontalMultipleChoiceWidget(urwid.WidgetWrap):
             suggestion_texts = []
             if self.ai_suggestions:  # Check if there are any suggestions at all
                 for suggestion in self.ai_suggestions:
-                    if suggestion.question_data == choice:
+                    if suggestion.question == choice:
                         prob = suggestion.probability
-                        ai_s = suggestion.ai_suggestions
+                        ai_s = suggestion.model_name
                         suggestion_texts.append(
                             urwid.Text(
                                 (

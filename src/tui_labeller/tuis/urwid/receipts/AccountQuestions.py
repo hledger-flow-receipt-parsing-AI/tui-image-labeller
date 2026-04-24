@@ -6,7 +6,6 @@ from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.question_data_classes import (
-    AISuggestion,
     HorizontalMultipleChoiceQuestionData,
     InputValidationQuestionData,
     VerticalMultipleChoiceQuestionData,
@@ -59,23 +58,7 @@ class AccountQuestions:
                 reconfigurer=True,
                 terminator=False,
                 choices=self.belongs_to_options,
-                ai_suggestions=[
-                    AISuggestion(
-                        question="name:uniswap:saving",
-                        probability=0.42,
-                        model_name="Gary",
-                    ),
-                    AISuggestion(
-                        question="name:uniswap:saving",
-                        probability=0.9001,
-                        model_name="Yanet",
-                    ),
-                    AISuggestion(
-                        question="assets:cash",
-                        probability=0.5,
-                        model_name="Barry",
-                    ),
-                ],
+                ai_suggestions=[],
                 nr_of_ans_per_batch=8,
                 navigation_display=urwid.AttrMap(
                     urwid.Pile(

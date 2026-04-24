@@ -53,7 +53,7 @@ def get_selected_caption(
                 # Use fixed-width spacing instead of tabs for consistent
                 # rendering
                 suggestion_text = (
-                    f"{suggestion.probability:.2f} {suggestion.ai_suggestions}"
+                    f"{suggestion.probability:.2f} {suggestion.model_name}"
                 )
         # Replace tabs with spaces and ensure consistent indentation
         return (
@@ -99,7 +99,7 @@ def get_vc_question(
                 # Use fixed-width spacing instead of tabs for consistent
                 # rendering
                 suggestion_text = (
-                    f"{suggestion.probability:.2f} {suggestion.ai_suggestions}"
+                    f"{suggestion.probability:.2f} {suggestion.model_name}"
                 )
         # Replace tabs with spaces and ensure consistent indentation
         global_index = batch_start + i
@@ -169,7 +169,7 @@ def get_vc_question_with_highlight(
         for suggestion in vc_question_data.ai_suggestions:
             if suggestion.question == choice:
                 suggestion_text = (
-                    f"{suggestion.probability:.2f} {suggestion.ai_suggestions}"
+                    f"{suggestion.probability:.2f} {suggestion.model_name}"
                 )
         marker = ">" if idx == highlighted_index else " "
         line = (

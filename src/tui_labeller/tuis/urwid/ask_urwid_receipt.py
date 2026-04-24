@@ -312,7 +312,7 @@ def _clear_matching_cli_answer(tui: QuestionnaireApp) -> None:
 def build_receipt_from_urwid(
     *,
     config: Config,
-    raw_receipt_img_filepath: str,
+    raw_receipt_img_filepaths: list[str],
     hledger_account_infos: set[HledgerFlowAccountInfo],
     accounts_without_csv: set[str],
     labelled_receipts: list[Receipt],
@@ -379,7 +379,7 @@ def build_receipt_from_urwid(
 
             return build_receipt_from_answers(
                 config=config,
-                raw_receipt_img_filepath=raw_receipt_img_filepath,
+                raw_receipt_img_filepaths=raw_receipt_img_filepaths,
                 final_answers=final_answers,
                 verbose=True,
                 hledger_account_infos=hledger_account_infos,

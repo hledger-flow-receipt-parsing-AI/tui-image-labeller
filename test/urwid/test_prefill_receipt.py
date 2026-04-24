@@ -40,7 +40,7 @@ def test_assert_autocomplete_options():
     #                 }
     categories = set("cash")
     build_receipt_from_urwid(
-        raw_receipt_img_filepath=prefilled_receipt.raw_img_filepath,
+        raw_receipt_img_filepaths=prefilled_receipt.raw_img_filepaths,
         account_infos={
             HledgerFlowAccountInfo(
                 account_holder="bank",

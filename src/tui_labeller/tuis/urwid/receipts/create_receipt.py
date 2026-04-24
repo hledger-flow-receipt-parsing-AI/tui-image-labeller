@@ -37,7 +37,7 @@ from tui_labeller.tuis.urwid.receipts.account_parser import (
 def build_receipt_from_answers(
     *,
     config: Config,
-    raw_receipt_img_filepath: str,
+    raw_receipt_img_filepaths: List[str],
     final_answers: List[
         Tuple[
             Union[
@@ -216,7 +216,7 @@ def build_receipt_from_answers(
 
     # Map the answers to Receipt parameters
     receipt_params = {
-        "raw_img_filepath": raw_receipt_img_filepath,
+        "raw_img_filepaths": raw_receipt_img_filepaths,
         "shop_identifier": selected_shop,
         "net_bought_items": net_bought_items,
         "net_returned_items": net_returned_items,

@@ -57,7 +57,7 @@ def pre_fill():
     accounts_without_csv: set[str] = get_hledger_pure_accounts_without_csv()
 
     build_receipt_from_urwid(
-        raw_receipt_img_filepath=prefilled_receipt.raw_img_filepath,
+        raw_receipt_img_filepaths=prefilled_receipt.raw_img_filepaths,
         hledger_account_infos=hledger_account_infos,
         accounts_without_csv=accounts_without_csv,
         labelled_receipts=[],

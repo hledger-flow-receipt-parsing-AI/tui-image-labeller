@@ -374,6 +374,10 @@ def _get_ai_suggestions(
     unavailable.  Works with or without an explicit ``ai:`` section in
     the config (uses defaults when absent).
     """
+    if getattr(config, "_skip_ai", False):
+        logger.info("AI suggestions skipped (--skip-ai)")
+        return {}
+
     try:
         from hledger_ai.ai_receipt_suggester import AIReceiptSuggester
         from hledger_ai.get_models import build_extraction_pipeline

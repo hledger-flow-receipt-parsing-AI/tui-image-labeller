@@ -1091,8 +1091,10 @@ def _try_non_withdrawal_amount_match(
     Returns an AmountMatchResult, or None when matching is skipped.
     """
     if config is None or csv_transactions_per_account is None:
+        _remove_match_choice(tui=tui)
         return None
     if _has_withdrawal_questions(tui=tui):
+        _remove_match_choice(tui=tui)
         return None
 
     receipt_date = None
@@ -1128,6 +1130,7 @@ def _try_non_withdrawal_amount_match(
         or amount_paid is None
         or amount_inp is None
     ):
+        _remove_match_choice(tui=tui)
         return None
 
     if change_returned is None:
@@ -1141,7 +1144,9 @@ def _try_non_withdrawal_amount_match(
             break
 
     if matching_ac is None:
-        # Asset account without CSV -- skip matching.
+        # Asset account without CSV -- skip matching and remove any
+        # leftover match choice widget from a previous account evaluation.
+        _remove_match_choice(tui=tui)
         return None
 
     txns_per_year = csv_transactions_per_account.get(matching_ac, {})

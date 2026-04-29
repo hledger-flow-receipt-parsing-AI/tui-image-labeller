@@ -1,9 +1,8 @@
 from typing import List, Tuple
 
 from tui_labeller.tuis.urwid.date_question.helper import (
-    adjust_day,
-    adjust_month,
     adjust_year,
+    get_max_days,
 )
 
 
@@ -36,26 +35,37 @@ def update_digit_value(
             amount=abs(change),
         )
 
-    # Month adjustments
+    # Month adjustments – reconstruct the full 2-digit month from its
+    # individual digits so that typing "1" then "2" gives month 12, not
+    # a relative adjustment that wraps past 12.
     elif current_pos in [5, 6]:  # Month digits
-        place_values = [10, 1]
-        digit_index = current_pos - 5  # Adjust for position offset
-        change = (new_digit - current_digit) * place_values[digit_index]
-        adjust_month(
-            date_values=date_values,
-            direction="up" if change >= 0 else "down",
-            amount=abs(change),
-        )
-    # Day adjustments
+        current_month = date_values[1] if date_values[1] is not None else 1
+        month_digits = [int(d) for d in f"{current_month:02d}"]
+        month_digits[current_pos - 5] = new_digit
+        new_month = month_digits[0] * 10 + month_digits[1]
+        if new_month < 1:
+            new_month = 1
+        elif new_month > 12:
+            new_month = 12
+        date_values[1] = new_month
+        # Clamp day to the new month's max days.
+        if date_values[2] is not None:
+            max_days = get_max_days(date_values=date_values)
+            if date_values[2] > max_days:
+                date_values[2] = max_days
+
+    # Day adjustments – same direct-set approach as month.
     elif current_pos in [8, 9]:  # Day digits
-        place_values = [10, 1]
-        digit_index = current_pos - 8  # Adjust for position offset
-        change = (new_digit - current_digit) * place_values[digit_index]
-        adjust_day(
-            date_values=date_values,
-            direction="up" if change >= 0 else "down",
-            amount=abs(change),
-        )
+        current_day = date_values[2] if date_values[2] is not None else 1
+        day_digits = [int(d) for d in f"{current_day:02d}"]
+        day_digits[current_pos - 8] = new_digit
+        new_day = day_digits[0] * 10 + day_digits[1]
+        max_days = get_max_days(date_values=date_values)
+        if new_day < 1:
+            new_day = 1
+        elif new_day > max_days:
+            new_day = max_days
+        date_values[2] = new_day
     # Time adjustments (only if not date_only, format: yyyy-mm-dd hh:mm)
     if not date_only:
         if current_pos in [11, 12]:  # Hour digits

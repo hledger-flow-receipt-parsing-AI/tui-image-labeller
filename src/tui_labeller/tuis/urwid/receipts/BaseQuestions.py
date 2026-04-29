@@ -48,7 +48,7 @@ class BaseQuestions:
     def get_withdrawal_toggle(self) -> HorizontalMultipleChoiceQuestionData:
         return HorizontalMultipleChoiceQuestionData(
             question="Is this a withdrawal? (y/n)",
-            choices=["y", "n"],
+            choices=["n", "y"],
             ai_suggestions=[],
             ans_required=True,
             reconfigurer=True,

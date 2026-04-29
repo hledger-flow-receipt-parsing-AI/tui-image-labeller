@@ -123,6 +123,17 @@ class HorizontalMultipleChoiceWidget(urwid.WidgetWrap):
             and self.get_answer_in_focus() == len(self.choice_widgets) - 1
         ):
             return self.safely_go_to_next_question()
+        # Allow typing a choice label (e.g. 'y' or 'n') to select it
+        # directly, then advance to the next question.
+        for i, choice in enumerate(self.question_data.choices):
+            if key == choice:
+                self._update_focus(selected_ans_col=i, select_ans=True)
+                self.confirm_selection()
+                if self.question_data.reconfigurer:
+                    return "reconfigurer"
+                if self.question_data.terminator:
+                    return "terminator"
+                return self.safely_go_to_next_question()
         return super().keypress(size, key)
 
     def _handle_navigation_keys(self, key):

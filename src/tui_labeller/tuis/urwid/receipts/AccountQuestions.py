@@ -109,7 +109,7 @@ class AccountQuestions:
             ),
             HorizontalMultipleChoiceQuestionData(
                 question="Add another account (y/n)?",
-                choices=["y", "n"],
+                choices=["n", "y"],
                 ai_suggestions=[],
                 ans_required=True,
                 reconfigurer=True,

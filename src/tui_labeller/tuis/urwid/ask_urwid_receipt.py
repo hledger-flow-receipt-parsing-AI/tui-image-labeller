@@ -421,6 +421,10 @@ def build_receipt_from_urwid(
         dict[AccountConfig, dict[int, list[Transaction]]]
     ) = None,
 ) -> Receipt:
+    import time as _time
+
+    _t0 = _time.monotonic()
+
     # Run AI extraction pipeline for suggestions (non-blocking fallback).
     ai_suggestions: dict[str, list[AISuggestion]] = {}
     if raw_receipt_img_filepaths:
@@ -428,6 +432,9 @@ def build_receipt_from_urwid(
             config=config,
             image_path=raw_receipt_img_filepaths[0],
         )
+
+    _t1 = _time.monotonic()
+    print(f"  [timing] AI suggestions: {_t1 - _t0:.1f}s")
 
     account_infos_str: list[str] = list(
         {x.to_colon_separated_string() for x in hledger_account_infos}
@@ -461,6 +468,10 @@ def build_receipt_from_urwid(
         account_infos_str=account_infos_str,
         accounts_without_csv=accounts_without_csv,
     )
+
+    _t2 = _time.monotonic()
+    print(f"  [timing] question setup: {_t2 - _t1:.1f}s")
+
     # Run reconfiguration before the first render so prefilled answers
     # (e.g. withdrawal toggle = "y") inject their dependent questions.
     tui = get_configuration(
@@ -473,6 +484,11 @@ def build_receipt_from_urwid(
         csv_transactions_per_account=csv_transactions_per_account,
         prefilled_receipt=prefilled_receipt,
     )
+
+    _t3 = _time.monotonic()
+    print(f"  [timing] get_configuration: {_t3 - _t2:.1f}s")
+    print(f"  [timing] total before tui.run(): {_t3 - _t0:.1f}s")
+
     tui.run()  # Start the first run.
     while True:
         if is_terminated(inputs=tui.inputs):

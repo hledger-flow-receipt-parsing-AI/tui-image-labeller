@@ -1103,6 +1103,7 @@ def _try_non_withdrawal_amount_match(
     change_returned: Optional[float] = None
     amount_inp = None
     change_inp = None
+    account_count = 0
 
     for inp in tui.inputs:
         w = inp.base_widget
@@ -1111,6 +1112,7 @@ def _try_non_withdrawal_amount_match(
             receipt_date = w.get_answer()
         elif q == BELONGS_TO_QUESTION and w.has_answer():
             account_str = str(w.get_answer())
+            account_count += 1
         elif q == AMOUNT_PAID_QUESTION and w.has_answer():
             try:
                 amount_paid = float(w.get_answer())
@@ -1123,6 +1125,12 @@ def _try_non_withdrawal_amount_match(
             except (ValueError, TypeError):
                 pass
             change_inp = inp
+
+    # Multi-account receipts split the total across accounts, so
+    # per-account CSV matching is not meaningful.
+    if account_count > 1:
+        _remove_match_choice(tui=tui)
+        return None
 
     if (
         receipt_date is None

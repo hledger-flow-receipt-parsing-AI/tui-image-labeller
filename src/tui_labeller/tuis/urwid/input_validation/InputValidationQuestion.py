@@ -41,6 +41,13 @@ class InputValidationQuestion(urwid.Edit):
             question_id or question_data.question
         )  # TODO: improve naming.
         self.history_store = history_store
+        # True while the field still shows its prefilled default verbatim.
+        self._default_untouched: bool = False
+
+    @typechecked
+    def mark_default_untouched(self) -> None:
+        """Record that the current text is the untouched prefilled default."""
+        self._default_untouched = True
 
     # def valid_char(self, ch):
     #     return len(ch) == 1 and (ch.isalpha() or ch in [":", "*"])
@@ -193,10 +200,17 @@ class InputValidationQuestion(urwid.Edit):
         if key == "down":
             return self.safely_go_to_next_question()
         elif key in ("delete", "backspace", "left", "right"):
+            self._default_untouched = False
             result = super().keypress(size, key)
             self.update_autocomplete()
             return result
         elif self.valid_char(ch=key):
+            if self._default_untouched:
+                # Replace the prefilled default rather than typing into it
+                # ("1.175" typed over "1.0" used to become "1.1751.0").
+                self._default_untouched = False
+                self.set_edit_text("")
+                self.set_edit_pos(0)
             result = super().keypress(size, key)
             self.update_autocomplete()
             return result
@@ -413,6 +427,7 @@ class InputValidationQuestion(urwid.Edit):
             raise ValueError(f"Unknown input_type: {self.input_type}")
 
         # Set the text and update autocomplete
+        self._default_untouched = False
         self.set_edit_text(str(value))
         self.update_autocomplete()
 

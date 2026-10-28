@@ -67,6 +67,10 @@ def create_question_widget(
         )
         if question_data.default is not None:
             widget.set_edit_text(question_data.default)
+            # Cursor at the end; the first typed character replaces the
+            # untouched default instead of being inserted in front of it.
+            widget.set_edit_pos(len(question_data.default))
+            widget.mark_default_untouched()
         attr_widget = urwid.AttrMap(widget, "normal")
         widget.owner = attr_widget
         return attr_widget

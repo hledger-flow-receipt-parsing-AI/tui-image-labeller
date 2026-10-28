@@ -98,13 +98,21 @@ def get_answers(
             answer = widget.get_answer()
             # results[widget] = answer
 
-        elif isinstance(widget, VerticalMultipleChoiceWidget):
-            answer = widget.get_answer()
-            # results[widget] = answer
-
-        elif isinstance(widget, HorizontalMultipleChoiceWidget):
-            answer = widget.get_answer()
-            # results[widget] = answer
+        elif isinstance(
+            widget,
+            (VerticalMultipleChoiceWidget, HorizontalMultipleChoiceWidget),
+        ):
+            if widget.has_answer():
+                answer = widget.get_answer()
+            elif widget.question_data.ans_required:
+                # Name the question instead of crashing with int('') deep
+                # inside the widget.
+                raise ValueError(
+                    "No answer selected for required question"
+                    f" '{widget.question_data.question.strip()}'"
+                )
+            else:
+                answer = ""
 
         else:
             raise ValueError(

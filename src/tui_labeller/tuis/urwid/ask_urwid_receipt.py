@@ -568,8 +568,13 @@ def build_receipt_from_urwid(
                 pile_contents.append((some_widget, ("pack", None)))
             tui.pile.contents = pile_contents
 
-            tui.run(
-                alternative_start_pos=(current_position + tui.nr_of_headers)
+            # Resume at the first unanswered required question (normally the
+            # address selector).  "current position + 1" skipped it, which
+            # left it unanswered and crashed get_answers() on termination.
+            tui.run_from_question(
+                question_index=tui.first_unanswered_required(
+                    default=current_position
+                )
             )
 
         else:

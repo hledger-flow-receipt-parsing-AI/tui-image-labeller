@@ -296,6 +296,20 @@ class HorizontalMultipleChoiceWidget(urwid.WidgetWrap):
         return False
 
     @typechecked
+    def clear_answer(self) -> None:
+        """Deselect every option.
+
+        Used when the questionnaire refuses to terminate (so the receipt
+        is not treated as finished) and to reset the matching-CLI
+        choice.
+        """
+        self.selected = None
+        for widget in self.choice_widgets:
+            radio = widget.contents[0][0].base_widget
+            radio.set_state(False, do_callback=False)
+            widget.contents[0][0].set_attr_map({None: "normal"})
+
+    @typechecked
     def set_answer(self, value: str) -> None:
         """Sets the selected answer for the horizontal multiple choice
         question.

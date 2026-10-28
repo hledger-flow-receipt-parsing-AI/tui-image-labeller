@@ -1,5 +1,7 @@
 import logging
 import os
+import sys
+import tempfile
 from typing import Any, List, Optional, Union
 
 import urwid
@@ -10,6 +12,10 @@ from typeguard import typechecked
 from urwid import AttrMap
 
 from tui_labeller.file_read_write_helper import write_to_file
+from tui_labeller.tuis.urwid.focus_markers import (
+    focus_markers_enabled,
+    format_focus_marker,
+)
 from tui_labeller.tuis.urwid.multiple_choice_question.HorizontalMultipleChoiceWidget import (  # noqa: E501
     HorizontalMultipleChoiceWidget,
 )
@@ -28,7 +34,23 @@ from tui_labeller.tuis.urwid.question_data_classes import (
     VerticalMultipleChoiceQuestionData,
 )
 
-log_file = os.path.join(os.path.dirname(__file__), "../../../../../log.txt")
+
+def _resolve_log_file() -> str:
+    """Legacy ``<repo>/../log.txt`` when writable, else ``$TUI_LABELLER_LOG``
+    or a file in the temp dir, so a wheel install on another machine works."""
+    explicit = os.environ.get("TUI_LABELLER_LOG")
+    if explicit:
+        return explicit
+    legacy = os.path.join(os.path.dirname(__file__), "../../../../../log.txt")
+    try:
+        with open(legacy, "a", encoding="utf-8"):
+            pass
+        return legacy
+    except OSError:
+        return os.path.join(tempfile.gettempdir(), "tui_labeller.log")
+
+
+log_file = _resolve_log_file()
 logging.basicConfig(
     filename=log_file,
     level=logging.INFO,
@@ -200,6 +222,43 @@ class QuestionnaireApp:
             self.columns, self.palette, unhandled_input=self._handle_input
         )
 
+        # Focus markers (opt-in): after every redraw whose focused question
+        # changed, write an invisible OSC string naming it to stdout.  The
+        # hledger-preprocessor demo harness records it to time the receipt
+        # highlights; terminals and asciinema-agg ignore unknown OSC strings.
+        self._focus_markers_enabled: bool = focus_markers_enabled()
+        self._last_focus_marker_id: Optional[str] = None
+        if self._focus_markers_enabled:
+            self._install_focus_marker_hook()
+
+    def _install_focus_marker_hook(self) -> None:
+        original_draw = self.loop.draw_screen
+
+        def draw_and_mark() -> None:
+            original_draw()
+            self._emit_focus_marker_if_changed()
+
+        # urwid's MainLoop.entering_idle() calls self.draw_screen(), so an
+        # instance attribute shadows the method.
+        self.loop.draw_screen = draw_and_mark
+
+    def _focused_question_id(self) -> Optional[str]:
+        index = self.get_focus()
+        if index < 0 or index >= len(self.questions):
+            return None
+        question_data = self.questions[index]
+        return question_data.question_id or question_data.question.strip()
+
+    def _emit_focus_marker_if_changed(self) -> None:
+        if not self._focus_markers_enabled:
+            return
+        question_id = self._focused_question_id()
+        if question_id is None or question_id == self._last_focus_marker_id:
+            return
+        self._last_focus_marker_id = question_id
+        sys.stdout.write(format_focus_marker(question_id=question_id))
+        sys.stdout.flush()
+
     def _move_focus(self, current_pos: int, key: str) -> None:
         """Move focus to next/previous question with wrap-around."""
         nr_of_questions = len(self.questions)
@@ -245,7 +304,10 @@ class QuestionnaireApp:
         elif key == "reconfigurer":
             raise urwid.ExitMainLoop()
         elif key == "terminator":
-            raise urwid.ExitMainLoop()
+            missing = self.first_unanswered_required()
+            if missing is None:
+                raise urwid.ExitMainLoop()
+            self._refuse_termination(question_index=missing)
         elif key == "q":
             self._save_results()
             raise urwid.ExitMainLoop()
@@ -290,6 +352,59 @@ class QuestionnaireApp:
         write_to_file("results.txt", str(results), append=True)
 
     @typechecked
+    def first_unanswered_required(
+        self, *, default: Optional[int] = None
+    ) -> Optional[int]:
+        """Index of the first required question without an answer.
+
+        Returns *default* when every required question is answered.
+        """
+        for index, input_widget in enumerate(self.inputs):
+            widget = input_widget.base_widget
+            question_data = getattr(widget, "question_data", None)
+            if question_data is None or not question_data.ans_required:
+                continue
+            if question_data.terminator:
+                # "Done with this receipt?" is the finishing action, not an
+                # answer to collect; it is never a resume target.
+                continue
+            if not widget.has_answer():
+                return index
+        return default
+
+    @typechecked
+    def _refuse_termination(self, *, question_index: int) -> None:
+        """Keep the questionnaire open: focus the unanswered required question,
+        paint it red, explain in the error panel, and un-select every
+        terminator so ``is_terminated()`` stays False."""
+        indent = self.indentation_spaces * " "
+        question = self.questions[question_index].question.strip()
+        for input_widget in self.inputs:
+            widget = input_widget.base_widget
+            question_data = getattr(widget, "question_data", None)
+            if (
+                question_data is not None
+                and question_data.terminator
+                and hasattr(widget, "clear_answer")
+            ):
+                widget.clear_answer()
+        self.set_focus(question_index)
+        target = self.inputs[question_index]
+        if isinstance(target, AttrMap):
+            target.set_attr_map({None: "error"})
+        self.error_display.base_widget.contents[1][0].set_text(
+            ("error", f"{indent}Answer required: {question}")
+        )
+        self._update_navigation_screen()
+
+    def _initialise_first_autocomplete(self) -> None:
+        if self.inputs and not isinstance(
+            self.inputs[0].base_widget,
+            (VerticalMultipleChoiceWidget, HorizontalMultipleChoiceWidget),
+        ):
+            self.inputs[0].base_widget.initalise_autocomplete_suggestions()
+
+    @typechecked
     def run(self, alternative_start_pos: Optional[int] = None) -> None:
         """Start the questionnaire application."""
         if self.inputs:
@@ -299,12 +414,15 @@ class QuestionnaireApp:
                 self.pile.focus_position = (
                     alternative_start_pos + self.nr_of_headers
                 )
-            # self.inputs[1].base_widget.initalise_autocomplete_suggestions()
-            if not isinstance(
-                self.inputs[0].base_widget,
-                (VerticalMultipleChoiceWidget, HorizontalMultipleChoiceWidget),
-            ):
-                self.inputs[0].base_widget.initalise_autocomplete_suggestions()
+            self._initialise_first_autocomplete()
+        self.loop.run()
+
+    @typechecked
+    def run_from_question(self, *, question_index: int) -> None:
+        """Start the loop with focus on the 0-based *question_index*."""
+        if self.inputs:
+            self.set_focus(question_index)
+            self._initialise_first_autocomplete()
         self.loop.run()
 
     @typechecked

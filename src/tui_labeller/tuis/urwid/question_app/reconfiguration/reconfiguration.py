@@ -558,18 +558,7 @@ def handle_withdrawal_toggle(
                     change_idx = i
                     break
             if change_idx is not None:
-                new_q_data.insert(
-                    change_idx,
-                    InputValidationQuestionData(
-                        question=AMOUNT_PAID_QUESTION,
-                        input_type=InputType.FLOAT,
-                        ai_suggestions=[],
-                        history_suggestions=[],
-                        ans_required=True,
-                        reconfigurer=False,
-                        terminator=False,
-                    ),
-                )
+                new_q_data.insert(change_idx, make_amount_paid_question())
 
         new_tui = create_questionnaire(
             questions=new_q_data,
@@ -584,6 +573,40 @@ def handle_withdrawal_toggle(
 
 
 AMOUNT_DEBITED_QUESTION = "Amount debited from source account:"
+
+
+@typechecked
+def make_amount_paid_question() -> InputValidationQuestionData:
+    """The "Amount paid from account:" question re-added when a withdrawal
+    toggle flips back to "n" (same id as the AccountQuestions original)."""
+    return InputValidationQuestionData(
+        question=AMOUNT_PAID_QUESTION,
+        question_id="amount",
+        input_type=InputType.FLOAT,
+        ai_suggestions=[],
+        history_suggestions=[],
+        ans_required=True,
+        reconfigurer=False,
+        terminator=False,
+    )
+
+
+@typechecked
+def make_match_choice_question() -> HorizontalMultipleChoiceQuestionData:
+    """The "No unique CSV match" choice injected after "Add another
+    account"."""
+    return HorizontalMultipleChoiceQuestionData(
+        question=MATCH_CHOICE_QUESTION,
+        question_id="match_choice",
+        choices=[
+            "Correct amounts/dates",
+            "Enter matching CLI",
+        ],
+        ai_suggestions=[],
+        ans_required=True,
+        reconfigurer=True,
+        terminator=False,
+    )
 
 
 @typechecked
@@ -1256,17 +1279,7 @@ def _inject_match_choice(
         return  # "Add another account" not found.
 
     # Build choice widget.
-    q_data = HorizontalMultipleChoiceQuestionData(
-        question=MATCH_CHOICE_QUESTION,
-        choices=[
-            "Correct amounts/dates",
-            "Enter matching CLI",
-        ],
-        ai_suggestions=[],
-        ans_required=True,
-        reconfigurer=True,
-        terminator=False,
-    )
+    q_data = make_match_choice_question()
 
     widget = HorizontalMultipleChoiceWidget(question_data=q_data)
     tui.inputs.insert(insert_idx, widget)

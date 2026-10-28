@@ -54,6 +54,7 @@ class AccountQuestions:
         return [
             VerticalMultipleChoiceQuestionData(
                 question="Belongs to bank/accounts_without_csv:",
+                question_id="bank_account",
                 ans_required=True,
                 reconfigurer=True,
                 terminator=False,
@@ -82,6 +83,7 @@ class AccountQuestions:
             ),
             VerticalMultipleChoiceQuestionData(
                 question="Currency:",
+                question_id="currency",
                 ans_required=True,
                 nr_of_ans_per_batch=8,
                 reconfigurer=False,
@@ -91,6 +93,7 @@ class AccountQuestions:
             ),
             InputValidationQuestionData(
                 question="Amount paid from account:",
+                question_id="amount",
                 input_type=InputType.FLOAT,
                 ai_suggestions=[],
                 history_suggestions=[],
@@ -100,6 +103,7 @@ class AccountQuestions:
             ),
             InputValidationQuestionData(
                 question="Change returned to account:",
+                question_id="change",
                 input_type=InputType.FLOAT,
                 ai_suggestions=[],
                 history_suggestions=[],
@@ -109,6 +113,7 @@ class AccountQuestions:
             ),
             HorizontalMultipleChoiceQuestionData(
                 question="Add another account (y/n)?",
+                question_id="add_another",
                 choices=["n", "y"],
                 ai_suggestions=[],
                 ans_required=True,

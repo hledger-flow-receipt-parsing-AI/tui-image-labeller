@@ -68,7 +68,10 @@ class InputValidationQuestion(urwid.Edit):
         elif self.input_type == InputType.LETTERS_AND_SPACE:
             return ch.isalpha() or ch == " "
         elif self.input_type == InputType.LETTERS_AND_NRS:
-            return ch.isalpha() or ch.isdigit()
+            # Zip codes and house numbers may contain a space ("W1D 1BS").
+            return ch.isalpha() or ch.isdigit() or ch == " "
+        elif self.input_type == InputType.NAME:
+            return ch.isalnum() or ch in " &'-./"
         else:
             raise ValueError(
                 "Mode must be a InputType enum value, found"
@@ -328,6 +331,7 @@ class InputValidationQuestion(urwid.Edit):
             InputType.LETTERS_SEMICOLON,
             InputType.LETTERS_AND_SPACE,
             InputType.LETTERS_AND_NRS,
+            InputType.NAME,
         ]:
 
             return current_text
@@ -378,6 +382,7 @@ class InputValidationQuestion(urwid.Edit):
             InputType.LETTERS_SEMICOLON,
             InputType.LETTERS_AND_SPACE,
             InputType.LETTERS_AND_NRS,
+            InputType.NAME,
         ]:
             if not isinstance(value, str):
                 raise ValueError(

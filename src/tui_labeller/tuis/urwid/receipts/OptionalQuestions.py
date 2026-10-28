@@ -70,6 +70,7 @@ class OptionalQuestions:
             ),
             InputValidationQuestionData(
                 question="\nSubtotal (Optional, press enter to skip):\n",
+                question_id="subtotal",
                 input_type=InputType.FLOAT,
                 ai_suggestions=self._ai.get("subtotal", []),
                 history_suggestions=[],
@@ -79,6 +80,7 @@ class OptionalQuestions:
             ),
             InputValidationQuestionData(
                 question="\nTotal tax (Optional, press enter to skip):\n",
+                question_id="total_tax",
                 input_type=InputType.FLOAT,
                 ai_suggestions=self._ai.get("total_tax", []),
                 history_suggestions=[],
@@ -88,6 +90,7 @@ class OptionalQuestions:
             ),
             HorizontalMultipleChoiceQuestionData(
                 question="\nDone with this receipt?",
+                question_id="done",
                 choices=["yes"],
                 ai_suggestions=[],
                 ans_required=True,
@@ -119,7 +122,7 @@ class OptionalQuestions:
         return [
             InputValidationQuestionData(
                 question="\nShop name:\n",
-                input_type=InputType.LETTERS,
+                input_type=InputType.NAME,
                 ai_suggestions=self._ai.get("shop_name", []),
                 history_suggestions=[],
                 ans_required=False,
@@ -159,7 +162,7 @@ class OptionalQuestions:
             ),
             InputValidationQuestionData(
                 question="Shop City:",
-                input_type=InputType.LETTERS,
+                input_type=InputType.LETTERS_AND_SPACE,
                 ai_suggestions=self._ai.get("shop_city", []),
                 history_suggestions=[],
                 ans_required=False,
@@ -169,7 +172,7 @@ class OptionalQuestions:
             ),
             InputValidationQuestionData(
                 question="Shop country:",
-                input_type=InputType.LETTERS,
+                input_type=InputType.LETTERS_AND_SPACE,
                 ai_suggestions=self._ai.get("shop_country", []),
                 history_suggestions=[],
                 ans_required=False,

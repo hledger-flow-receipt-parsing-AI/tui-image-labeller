@@ -69,6 +69,7 @@ class WithdrawalQuestions:
             # 1. Source account selection.
             VerticalMultipleChoiceQuestionData(
                 question="Withdrawal source account:",
+                question_id="withdrawal_source",
                 ans_required=True,
                 reconfigurer=False,
                 terminator=False,
@@ -98,6 +99,7 @@ class WithdrawalQuestions:
             # 2. Source account currency.
             VerticalMultipleChoiceQuestionData(
                 question="Source account currency:",
+                question_id="withdrawal_currency",
                 ans_required=True,
                 nr_of_ans_per_batch=8,
                 reconfigurer=False,
@@ -108,6 +110,7 @@ class WithdrawalQuestions:
             # 3. Amount debited from source account (always asked).
             InputValidationQuestionData(
                 question="Amount debited from source account:",
+                question_id="withdrawal_amount",
                 input_type=InputType.FLOAT,
                 ai_suggestions=[],
                 history_suggestions=[],
@@ -122,6 +125,7 @@ class WithdrawalQuestions:
         """ATM operator fee in withdrawn currency (default 0)."""
         return InputValidationQuestionData(
             question="ATM operator fee (in withdrawn currency, 0 if none):",
+            question_id="atm_fee",
             input_type=InputType.FLOAT,
             ai_suggestions=[],
             history_suggestions=[],
@@ -136,6 +140,7 @@ class WithdrawalQuestions:
         """Exchange rate for foreign withdrawals (default 1)."""
         return InputValidationQuestionData(
             question="Exchange rate (1 source = X destination):",
+            question_id="exchange_rate",
             input_type=InputType.FLOAT,
             ai_suggestions=[],
             history_suggestions=[],
@@ -150,6 +155,7 @@ class WithdrawalQuestions:
         """Bank fee charged by the source bank (default 0)."""
         return InputValidationQuestionData(
             question="Bank fee (in source currency, 0 if none):",
+            question_id="bank_fee",
             input_type=InputType.FLOAT,
             ai_suggestions=[],
             history_suggestions=[],

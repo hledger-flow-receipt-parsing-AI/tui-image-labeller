@@ -48,6 +48,7 @@ class BaseQuestions:
     def get_withdrawal_toggle(self) -> HorizontalMultipleChoiceQuestionData:
         return HorizontalMultipleChoiceQuestionData(
             question="Is this a withdrawal? (y/n)",
+            question_id="is_withdrawal",
             choices=["n", "y"],
             ai_suggestions=[],
             ans_required=True,
@@ -59,6 +60,7 @@ class BaseQuestions:
     def create_date_question(self) -> DateQuestionData:
         return DateQuestionData(
             question="Receipt date and time:\n",
+            question_id="date",
             date_only=False,
             ai_suggestions=self._ai.get("receipt_date", []),
             ans_required=True,
@@ -70,6 +72,7 @@ class BaseQuestions:
     def get_category_question(self) -> InputValidationQuestionData:
         return InputValidationQuestionData(
             question="\nBookkeeping expense category:",
+            question_id="category",
             input_type=InputType.LETTERS_SEMICOLON,
             ai_suggestions=self._ai.get("category", []),
             history_suggestions=[],

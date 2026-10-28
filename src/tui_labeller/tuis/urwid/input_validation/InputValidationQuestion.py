@@ -201,6 +201,7 @@ class InputValidationQuestion(urwid.Edit):
             return self.safely_go_to_next_question()
         elif key in ("delete", "backspace", "left", "right"):
             self._default_untouched = False
+            self.question_data.user_edited = True
             result = super().keypress(size, key)
             self.update_autocomplete()
             return result
@@ -211,6 +212,7 @@ class InputValidationQuestion(urwid.Edit):
                 self._default_untouched = False
                 self.set_edit_text("")
                 self.set_edit_pos(0)
+            self.question_data.user_edited = True
             result = super().keypress(size, key)
             self.update_autocomplete()
             return result
@@ -426,9 +428,16 @@ class InputValidationQuestion(urwid.Edit):
         else:
             raise ValueError(f"Unknown input_type: {self.input_type}")
 
-        # Set the text and update autocomplete
-        self._default_untouched = False
+        # Set the text and update autocomplete.  A restored default that the
+        # user never edited stays replaceable by the first keystroke (the
+        # questionnaire is rebuilt on every reconfiguration and
+        # preserve_current_answers() reads untouched defaults as answers).
+        self._default_untouched = bool(
+            self.question_data.default is not None
+            and not self.question_data.user_edited
+        )
         self.set_edit_text(str(value))
+        self.set_edit_pos(len(str(value)))
         self.update_autocomplete()
 
         # Store answer in history_store

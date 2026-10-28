@@ -56,6 +56,11 @@ class InputValidationQuestionData:
         self.default: str = default
         self.question_id: Union[None, str] = question_id
         self.custom_validator: Optional[callable] = custom_validator
+        # Set once the user edits the field.  Lives on the question data (not
+        # the widget) because the questionnaire is rebuilt on every
+        # reconfiguration; a restored, never-edited default must stay
+        # replaceable by the first keystroke.
+        self.user_edited: bool = False
 
 
 class VerticalMultipleChoiceQuestionData:

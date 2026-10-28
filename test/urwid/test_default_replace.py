@@ -61,3 +61,30 @@ def test_editing_key_keeps_the_default() -> None:
 
 def test_untouched_default_is_still_the_answer() -> None:
     assert _make("0.0").get_answer() == 0.0
+
+
+def test_restored_default_after_rebuild_is_still_replaced() -> None:
+    """Reconfiguration rebuilds the questionnaire and restores the untouched
+    default through set_answer(); the first keystroke must still replace it.
+
+    (This is how the US-2b.3 demo ended up with exchange_rate 1.0: the
+    injected "Exchange rate" field was rebuilt once more before the user
+    typed, and "1.175" became "11.175.0".)
+    """
+    w = _make("1")
+    w.set_answer(1.0)  # what set_default_focus_and_answers() does on rebuild
+    assert w.edit_text == "1.0"
+    for ch in "1.175":
+        w.keypress(SIZE, ch)
+    assert w.edit_text == "1.175"
+
+
+def test_user_edit_survives_rebuild_restore() -> None:
+    w = _make("1")
+    w.keypress(SIZE, "2")  # user typed over the default
+    assert w.edit_text == "2"
+    w2 = _make("1")
+    w2.question_data.user_edited = w.question_data.user_edited
+    w2.set_answer(2.0)  # restored on rebuild
+    w2.keypress(SIZE, "5")  # a further edit appends, nothing is wiped
+    assert w2.edit_text == "2.05"

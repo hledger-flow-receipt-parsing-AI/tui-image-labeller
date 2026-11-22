@@ -164,6 +164,15 @@ labelled so far first, and the ones you never used last. Currencies that were
 chosen equally often keep their usual order, so nothing changes until a first
 receipt has been labelled.
 
+### This receipt is not mine
+
+When a receipt has no matching bank transaction, the "No matches found" menu
+offers `6. This receipt is not mine`. After you confirm, the receipt's images,
+their rotated and cropped copies, the metadata and the answers you typed so
+far move to `receipt_training_dataset/` in your finance folder, and labelling
+continues with the next receipt. Nothing is deleted; `moved_from.json` in the
+receipt's folder records where every file came from.
+
 ## Developer
 
 ```bash

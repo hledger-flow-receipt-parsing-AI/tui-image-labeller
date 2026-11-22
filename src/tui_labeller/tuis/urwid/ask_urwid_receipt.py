@@ -45,6 +45,7 @@ from tui_labeller.tuis.urwid.prefill_receipt.pre_fill_receipt import (
 from tui_labeller.tuis.urwid.question_app.generator import create_questionnaire
 from tui_labeller.tuis.urwid.question_app.get_answers import (
     get_answers,
+    get_answers_so_far,
     is_terminated,
 )
 from tui_labeller.tuis.urwid.question_app.reconfiguration.reconfiguration import (  # noqa: E501
@@ -176,11 +177,38 @@ def _build_action_dataset(
     )
 
 
+class _ReceiptAbandoned(Exception):
+    """The user confirmed "This receipt is not mine" in the matching CLI."""
+
+
+def _not_mine_support() -> Any:
+    """Hledger-receipt-processing's receipt_not_mine module, or None when an
+    older hledger-receipt-processing without it is installed (the matching menu
+    then stays as it was).
+
+    That package owns the option: it shows it in the menu, moves the
+    receipt's files to the training dataset and continues with the next
+    receipt.  This TUI only asks, and hands over the answers typed so far.
+    """
+    try:
+        from hledger_receipt_processing.receipts_to_objects import (
+            receipt_not_mine,
+        )
+    except ImportError:
+        return None
+    return receipt_not_mine
+
+
 def _run_matching_cli_loop(
     action_dataset: ActionDataset,
+    *,
+    raw_receipt_img_filepaths: list[str] | None = None,
 ) -> Config | None:
     """Run the matching CLI loop. Returns the (potentially widened) config, or
     None if the user chose to return to the TUI.
+
+    With *raw_receipt_img_filepaths* the menu also offers "This receipt
+    is not mine"; after an explicit yes it raises _ReceiptAbandoned.
 
     This function uses input() and print() — the urwid screen must be
     stopped before calling it.
@@ -205,6 +233,11 @@ def _run_matching_cli_loop(
         get_receipt_transaction_matches_in_csv_accounts,
     )
 
+    not_mine = _not_mine_support() if raw_receipt_img_filepaths else None
+    menu_options: dict[str, Any] = (
+        {"allow_not_mine": True} if not_mine is not None else {}
+    )
+
     while True:
         action: ReceiptMatchingAction = get_receipt_action(
             account=action_dataset.account,
@@ -212,7 +245,19 @@ def _run_matching_cli_loop(
                 action_dataset.search_receipt_account_transaction
             ),
             receipt=action_dataset.receipt,
+            **menu_options,
         )
+
+        if not_mine is not None and action == ReceiptMatchingAction.NOT_MINE:
+            # Files are only moved after an explicit yes; a no keeps the
+            # questionnaire and its answers.
+            if not_mine.confirm_receipt_not_mine(
+                config=action_dataset.config,
+                raw_receipt_img_filepaths=raw_receipt_img_filepaths,
+            ):
+                raise _ReceiptAbandoned()
+            print("\nNothing was moved.\n")
+            continue
 
         if action == ReceiptMatchingAction.CHECK_RECEIPT:
             print(
@@ -560,6 +605,7 @@ def build_receipt_from_urwid(
             # Suspend urwid to run the matching CLI via input().
             tui.loop.screen.stop()
 
+            abandoned = False
             try:
                 action_dataset = _build_action_dataset(
                     tui=tui,
@@ -567,14 +613,29 @@ def build_receipt_from_urwid(
                     csv_transactions_per_account=(csv_transactions_per_account),
                     labelled_receipts=labelled_receipts,
                 )
-                updated_config = _run_matching_cli_loop(action_dataset)
+                updated_config = _run_matching_cli_loop(
+                    action_dataset,
+                    raw_receipt_img_filepaths=raw_receipt_img_filepaths,
+                )
                 if updated_config is not None:
                     config = updated_config
+            except _ReceiptAbandoned:
+                abandoned = True
             except KeyboardInterrupt:
                 print("\nMatching CLI interrupted. Returning to TUI.")
             finally:
-                # Resume urwid.
-                tui.loop.screen.start()
+                if not abandoned:
+                    # Resume urwid.
+                    tui.loop.screen.start()
+
+            if abandoned:
+                # "This receipt is not mine": leave the questionnaire for
+                # good (the screen stays stopped) and hand the answers typed
+                # so far to the labelling loop in hledger-receipt-processing,
+                # which moves the receipt to the training dataset.
+                raise _not_mine_support().ReceiptNotMine(
+                    partial_answers=get_answers_so_far(inputs=tui.inputs)
+                )
 
             # Clear the choice answer so it does not re-trigger.
             _clear_matching_cli_answer(tui)

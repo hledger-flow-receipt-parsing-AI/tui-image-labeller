@@ -157,6 +157,13 @@ A new category is saved to the categories file straight away. The file is
 rewritten in one consistent layout (two-space indent, `{}` for leaves); its
 content is otherwise unchanged.
 
+### Currency
+
+The currency questions list the currency you chose most often in the receipts
+labelled so far first, and the ones you never used last. Currencies that were
+chosen equally often keep their usual order, so nothing changes until a first
+receipt has been labelled.
+
 ## Developer
 
 ```bash

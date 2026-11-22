@@ -1,10 +1,12 @@
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from typeguard import typechecked
 
+from tui_labeller.categories.category_store import CategoryStore
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.question_data_classes import (
     AISuggestion,
+    CategoryQuestionData,
     DateQuestionData,
     HorizontalMultipleChoiceQuestionData,
     InputValidationQuestionData,
@@ -23,8 +25,10 @@ class BaseQuestions:
     def __init__(
         self,
         ai_suggestions: Optional[Dict[str, List[AISuggestion]]] = None,
+        category_store: Optional[CategoryStore] = None,
     ):
         self._ai = ai_suggestions or {}
+        self._category_store: Optional[CategoryStore] = category_store
         self.base_questions = self.create_base_questions()
         self.verify_unique_questions(self.base_questions)
 
@@ -70,16 +74,26 @@ class BaseQuestions:
 
     @typechecked
     def get_category_question(self) -> InputValidationQuestionData:
-        return InputValidationQuestionData(
-            question="\nBookkeeping expense category:",
-            question_id="category",
-            input_type=InputType.LETTERS_SEMICOLON,
-            ai_suggestions=self._ai.get("category", []),
-            history_suggestions=[],
-            ans_required=True,
-            reconfigurer=True,
-            terminator=False,
-            custom_validator=validate_category,
+        common: Dict[str, Any] = {
+            "question": "\nBookkeeping expense category:",
+            "question_id": "category",
+            "input_type": InputType.CATEGORY,
+            "ai_suggestions": self._ai.get("category", []),
+            "history_suggestions": [],
+            "ans_required": True,
+            "reconfigurer": True,
+            "terminator": False,
+        }
+        if self._category_store is None:
+            # No categories file known (examples, callers that only count
+            # questions or read captions): the free-text field.
+            return InputValidationQuestionData(
+                custom_validator=validate_category, **common
+            )
+        # Answers are picked from the categories file (dropdown), and new
+        # categories are created deliberately in the new-category screen.
+        return CategoryQuestionData(
+            category_store=self._category_store, **common
         )
 
     def verify_unique_questions(self, questions):

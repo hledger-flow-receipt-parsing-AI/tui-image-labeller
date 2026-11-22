@@ -8,5 +8,8 @@ class InputType(Enum):
     LETTERS_AND_NRS = "letters_and_numbers"
     # Letters, digits, space and &'-./ : shop names like "H&M", "Koffie Leute".
     NAME = "name"
+    # Letters, digits, _ and : (category paths like "repairs:bike_shed"),
+    # plus * as a wildcard while searching.
+    CATEGORY = "category"
     FLOAT = "float"
     INTEGER = "integer"

@@ -111,7 +111,7 @@ def set_receipt_details(
             "type": InputValidationQuestion,
             "field": "receipt_category",
             "caption": BaseQuestions().get_category_question().question,
-            "input_type": InputType.LETTERS_SEMICOLON,
+            "input_type": InputType.CATEGORY,
         },
         "subtotal": {
             "type": InputValidationQuestion,

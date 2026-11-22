@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Union
 from hledger_core.AISuggestion import AISuggestion  # noqa: F401
 from urwid import AttrMap
 
+from tui_labeller.categories.category_store import CategoryStore
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 
 
@@ -61,6 +62,20 @@ class InputValidationQuestionData:
         # reconfiguration; a restored, never-edited default must stay
         # replaceable by the first keystroke.
         self.user_edited: bool = False
+
+
+class CategoryQuestionData(InputValidationQuestionData):
+    """The category question when the categories file is known: answers
+    are picked from *category_store* instead of typed freely.
+
+    The store rides on the question data because the questionnaire (and
+    every widget) is rebuilt on each reconfiguration, while the question
+    data objects are carried over.
+    """
+
+    def __init__(self, *, category_store: CategoryStore, **kwargs):
+        super().__init__(**kwargs)
+        self.category_store: CategoryStore = category_store
 
 
 class VerticalMultipleChoiceQuestionData:

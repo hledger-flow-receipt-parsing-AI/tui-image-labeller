@@ -79,6 +79,8 @@ class InputValidationQuestion(urwid.Edit):
             return ch.isalpha() or ch.isdigit() or ch == " "
         elif self.input_type == InputType.NAME:
             return ch.isalnum() or ch in " &'-./"
+        elif self.input_type == InputType.CATEGORY:
+            return ch.isalnum() or ch in "_:*"
         else:
             raise ValueError(
                 "Mode must be a InputType enum value, found"
@@ -348,6 +350,7 @@ class InputValidationQuestion(urwid.Edit):
             InputType.LETTERS_AND_SPACE,
             InputType.LETTERS_AND_NRS,
             InputType.NAME,
+            InputType.CATEGORY,
         ]:
 
             return current_text
@@ -399,6 +402,7 @@ class InputValidationQuestion(urwid.Edit):
             InputType.LETTERS_AND_SPACE,
             InputType.LETTERS_AND_NRS,
             InputType.NAME,
+            InputType.CATEGORY,
         ]:
             if not isinstance(value, str):
                 raise ValueError(

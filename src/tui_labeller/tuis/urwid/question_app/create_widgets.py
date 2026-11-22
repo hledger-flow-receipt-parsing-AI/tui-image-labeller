@@ -4,6 +4,9 @@ import urwid
 from typeguard import typechecked
 from urwid import AttrMap, Pile
 
+from tui_labeller.tuis.urwid.category_question.CategoryQuestion import (
+    CategoryQuestion,
+)
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
     DateTimeQuestion,
 )
@@ -17,6 +20,7 @@ from tui_labeller.tuis.urwid.multiple_choice_question.VerticalMultipleChoiceWidg
     VerticalMultipleChoiceWidget,
 )
 from tui_labeller.tuis.urwid.question_data_classes import (
+    CategoryQuestionData,
     DateQuestionData,
     HorizontalMultipleChoiceQuestionData,
     InputValidationQuestionData,
@@ -53,6 +57,19 @@ def create_question_widget(
             pile=pile,
         )
         widget.error_text = error_display
+        attr_widget = urwid.AttrMap(widget, "normal")
+        widget.owner = attr_widget
+        return attr_widget
+
+    elif isinstance(question_data, CategoryQuestionData):
+        # Checked before its parent class InputValidationQuestionData.
+        widget = CategoryQuestion(
+            question_data=question_data,
+            ai_suggestion_box=ai_suggestion_box,
+            history_suggestion_box=history_suggestion_box,
+            pile=pile,
+            history_store=history_store,
+        )
         attr_widget = urwid.AttrMap(widget, "normal")
         widget.owner = attr_widget
         return attr_widget

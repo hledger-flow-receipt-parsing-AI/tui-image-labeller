@@ -60,9 +60,9 @@ ______________________________________________________________________
 
 **Produces:**
 
-- `dropdown`: `NEW_ROW_LABEL = "+ new category..."`; `MAX_VISIBLE_ROWS = 8`; `dropdown_size(*, matches: List[str], maxcol: int) -> Tuple[int, int]` (width, height); `dropdown_lines(*, matches: List[str], highlight: int, total: int, width: int, height: int) -> List[Tuple[str, str]]` (attribute and text per row, exactly `height` rows of `width` characters, row 0 pinned, the window of matches follows the highlight); `CategoryDropdown(urwid.Widget)` box widget rendering those lines; `DisplayOnlyPopUpTarget(urwid.PopUpTarget)`.
+- `dropdown`: `NEW_ROW_LABEL = "+ new category..."`; `MAX_VISIBLE_ROWS = 8`; `dropdown_size(*, row_count: int, longest: int, maxcol: int) -> Tuple[int, int]` (width, height; `longest` is the longest category of the whole tree, so the width is stable while typing); `dropdown_lines(*, matches: List[str], highlight: int, total: int, width: int, height: int) -> List[Tuple[str, str]]` (attribute and text per row, exactly `height` rows of `width` characters, row 0 pinned, the window of matches follows the highlight); `CategoryDropdown(urwid.Widget)` box widget rendering those lines; `DisplayOnlyPopUpTarget`, a `WidgetDecoration` that only overrides `render`.
 
-- `CategoryQuestion(InputValidationQuestion)`: attributes `store`, `matches: List[str]`, `highlight: int` (0 is the new row, `i` is `matches[i - 1]`), `dropdown_open: bool`; `NEW_CATEGORY_KEY = "new_category"`; `is_known_category() -> bool`; `accept_category(*, path: str) -> Optional[str]`; `keypress` returns `None`, `"reconfigurer"` / `"next_question"`, `"previous_question"` or `NEW_CATEGORY_KEY`.
+- `CategoryQuestion(InputValidationQuestion)`: attributes `store`, `matches: List[str]`, `highlighted_row: int` (0 is the new row, `i` is `matches[i - 1]`, `NO_ROW = -1` while the field is empty; urwid's `Edit` already owns the name `highlight`), `dropdown_open: bool`; `NEW_CATEGORY_KEY = "new_category"`; `is_known_category() -> bool`; `accept_category(*, path: str) -> Optional[str]`; `keypress` returns `None`, `"reconfigurer"` / `"next_question"`, `"previous_question"` or `NEW_CATEGORY_KEY`.
 
 - Palette entries `dropdown`, `dropdown_selected`.
 
@@ -78,7 +78,7 @@ ______________________________________________________________________
 
 ### Task 4: new-category screen
 
-**Files:** Create `tuis/urwid/category_question/CategoryTreeScreen.py`. Modify `question_app/palette.py` (entry `tree_cursor`). Test: `test/urwid/test_category_tree_screen.py`.
+**Files:** Create `tuis/urwid/category_question/CategoryTreeScreen.py`. Test: `test/urwid/test_category_tree_screen.py`.
 
 **Consumes:** `CategoryStore`, `AdditionPlan`.
 

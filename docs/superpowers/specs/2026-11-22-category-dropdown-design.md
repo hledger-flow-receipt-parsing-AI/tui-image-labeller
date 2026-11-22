@@ -57,6 +57,9 @@ Bookkeeping expense category: groc|
   each group. `plumb` therefore finds `repairs:house:kitchen:plumbing`.
 - The first match is highlighted after every text change. With no match,
   `+ new category...` is the only row and is highlighted.
+- While the field is empty nothing is highlighted, so a stray Enter cannot
+  pick whichever category comes first: Enter turns the field red, as for
+  any empty required question, and Down steps into the list.
 
 Keys while the list is open:
 

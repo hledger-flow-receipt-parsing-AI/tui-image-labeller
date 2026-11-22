@@ -155,6 +155,10 @@ class CategoryTreeScreen(urwid.WidgetWrap):
     def selectable(self) -> bool:
         return True
 
+    def mouse_event(self, *_args: Any, **_kwargs: Any) -> bool:
+        """Keyboard only: a click must not move focus inside the frame."""
+        return True
+
     # ------------------------------------------------------------- state
 
     def _expand_to(self, *, path: str) -> None:

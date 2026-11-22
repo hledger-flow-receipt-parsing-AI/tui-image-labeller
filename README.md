@@ -126,6 +126,36 @@ ______________________________________________________________________
 - **Input Validation**: `Left` moves cursor left one character, `Right` moves right. At the start, `Left` moves to the previous question; at the end, `Right` moves to the next.
 - **Date Questions**: `Left` moves cursor one digit left (e.g., `Yyyy` → `Yyy`), `Right` moves one digit right. At `Y` of `Yyyy`, `Left` moves to the previous question; at `D` of `dD`, `Right` moves to the next.
 
+### Bookkeeping expense category
+
+The category question lists the categories of your categories file while you
+type, in a box drawn over the questions below it. It only accepts a category
+that exists, so a typo cannot become a new category by accident.
+
+- Typing filters the list. A fragment is enough: `plumb` finds
+  `repairs:house:kitchen:plumbing`. `*` is a wildcard (`gro*plaza`).
+- `Up`/`Down` move the highlight. `Up` from the top row goes to the previous
+  question.
+- `Enter` takes the highlighted category and moves on.
+- `Tab` copies the highlighted category into the field, so you can type on to
+  a sub-category.
+- `Esc` closes the list; typing opens it again.
+- While the field is empty nothing is highlighted, so `Enter` picks nothing.
+
+The top row, `+ new category...`, opens a screen with the whole category tree:
+
+- `Up`/`Down` move, `Right`/`Left` open and close a branch.
+- `Enter` uses the highlighted category for the receipt.
+- `n` adds a category under the highlighted one. A `:` creates several levels
+  at once (`house:kitchen:plumbing` under `repairs`). The screen shows what
+  will be created, and asks for a second `Enter` when the name looks like an
+  existing sibling (`transport` next to `transportation`).
+- `Esc` goes back without changes.
+
+A new category is saved to the categories file straight away. The file is
+rewritten in one consistent layout (two-space indent, `{}` for leaves); its
+content is otherwise unchanged.
+
 ## Developer
 
 ```bash

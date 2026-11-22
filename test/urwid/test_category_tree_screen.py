@@ -331,6 +331,15 @@ def test_cursor_row_stays_visible_in_a_long_tree() -> None:
     assert ">   category099" in _text(screen)
 
 
+def test_mouse_clicks_change_nothing() -> None:
+    screen, _, used, cancelled = _screen(typed_text="repairs")
+    before = _text(screen)
+    assert screen.mouse_event(SIZE, "mouse press", 1, 5, 20, True) is True
+    assert _text(screen) == before
+    assert used == [] and cancelled == []
+    assert not screen.adding
+
+
 def test_screen_always_takes_keys() -> None:
     screen, _, _, _ = _screen(store=CategoryStore(hierarchy={}))
     assert screen.selectable()

@@ -46,10 +46,12 @@ Bookkeeping expense category: groc|
 ```
 
 - Row 0 is always `+ new category...`. Below it: the matching categories.
-- At most 8 rows are visible, row 0 included. Row 0 stays in place while
-  the matches scroll with the highlight. If fewer rows fit between the field and the bottom of the
-  screen, the list shrinks to what fits. The bottom border shows a key hint
-  and `matches of total`.
+- The list is as tall as its matches need, down to 90% of the screen
+  height at most, so the bottom tenth of the screen stays visible. Row 0
+  stays in place while the matches scroll with the highlight. If the field
+  sits so low that fewer than three rows fit above that line, the list
+  uses the rows left on the screen instead. The bottom border shows a key
+  hint and `matches of total`.
 - Matching is case-insensitive "contains". `*` splits the text into chunks
   that must occur in that order. Empty text matches everything.
 - Order: exact match, then paths starting with the text, then paths with a

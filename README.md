@@ -129,7 +129,8 @@ ______________________________________________________________________
 ### Bookkeeping expense category
 
 The category question lists the categories of your categories file while you
-type, in a box drawn over the questions below it. It only accepts a category
+type, in a box drawn over the questions below it. The box is as tall as its
+matches need and reaches down to 90% of the screen height at most. It only accepts a category
 that exists, so a typo cannot become a new category by accident.
 
 - Typing filters the list. A fragment is enough: `plumb` finds

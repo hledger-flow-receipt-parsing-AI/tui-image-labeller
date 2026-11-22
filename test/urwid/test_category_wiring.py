@@ -17,7 +17,10 @@ from tui_labeller.tuis.urwid.category_question.CategoryQuestion import (
 from tui_labeller.tuis.urwid.category_question.CategoryTreeScreen import (
     CategoryTreeScreen,
 )
-from tui_labeller.tuis.urwid.category_question.dropdown import NEW_ROW_LABEL
+from tui_labeller.tuis.urwid.category_question.dropdown import (
+    LIST_BOTTOM_PERCENT,
+    NEW_ROW_LABEL,
+)
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.question_app.reconfiguration.reconfiguration import (  # noqa: E501
     handle_withdrawal_toggle,
@@ -120,6 +123,23 @@ def test_list_is_drawn_in_the_real_layout_without_moving_anything() -> None:
         # nothing changed.
         assert opened[index][box_width:] == closed[index][box_width:]
     assert "Navigation" in "\n".join(opened)
+
+
+def test_long_list_leaves_the_bottom_tenth_of_the_real_screen_free() -> None:
+    tree = {f"category{number:03d}": {} for number in range(100)}
+    app = _app(store=CategoryStore(hierarchy=tree))
+    opened = _rows(app)
+    _category(app).keypress((80,), "esc")
+    closed = _rows(app)
+
+    bottom = SCREEN[1] * LIST_BOTTOM_PERCENT // 100
+    assert bottom == 36
+    changed = [
+        index for index, row in enumerate(opened) if row != closed[index]
+    ]
+    assert changed[-1] == bottom - 1
+    assert opened[bottom - 1].startswith("└")
+    assert opened[bottom:] == closed[bottom:]
 
 
 def test_cursor_stays_in_the_category_field() -> None:

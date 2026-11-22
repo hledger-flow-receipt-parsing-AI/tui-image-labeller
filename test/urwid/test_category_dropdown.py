@@ -1,7 +1,7 @@
 """The dropdown is drawn over the questions below the category field without
 moving them, and without taking keys, focus or cursor away from the field."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import urwid
 
@@ -9,7 +9,7 @@ from tui_labeller.categories.category_store import CategoryStore
 from tui_labeller.tuis.urwid.category_question.dropdown import (
     ATTR_DROPDOWN,
     ATTR_SELECTED,
-    MAX_VISIBLE_ROWS,
+    LIST_BOTTOM_PERCENT,
     NEW_ROW_LABEL,
     DisplayOnlyPopUpTarget,
     dropdown_lines,
@@ -119,11 +119,9 @@ def test_long_names_are_cut_to_the_width() -> None:
     assert "…" in lines[2][1]
 
 
-def test_size_is_stable_in_width_and_capped_in_height() -> None:
-    assert dropdown_size(row_count=20, longest=30, maxcol=100) == (
-        40,
-        MAX_VISIBLE_ROWS + 2,
-    )
+def test_size_is_stable_in_width_and_asks_room_for_every_match() -> None:
+    # The pop-up host, which knows the screen, cuts the height to fit.
+    assert dropdown_size(row_count=20, longest=30, maxcol=100) == (40, 23)
     assert dropdown_size(row_count=2, longest=60, maxcol=100) == (66, 5)
     assert dropdown_size(row_count=0, longest=60, maxcol=50) == (50, 3)
 
@@ -131,9 +129,18 @@ def test_size_is_stable_in_width_and_capped_in_height() -> None:
 # ---------------------------------------------------------------- pop-up host
 
 
-def _screen(*, focus_position: int = 2):
+def _long_tree() -> Dict[str, Any]:
+    return {f"category{number:03d}": {} for number in range(100)}
+
+
+def _list_bottom(*, screen_rows: int) -> int:
+    """First screen row the list must leave free."""
+    return screen_rows * LIST_BOTTOM_PERCENT // 100
+
+
+def _screen(*, focus_position: int = 2, tree: Optional[Dict[str, Any]] = None):
     """Eight single-line questions with the category question third."""
-    store = CategoryStore(hierarchy=_tree())
+    store = CategoryStore(hierarchy=tree or _tree())
     data = BaseQuestions(category_store=store).get_category_question()
     pile = urwid.Pile([])
     category = create_question_widget(
@@ -177,10 +184,45 @@ def test_nothing_else_on_the_screen_moves() -> None:
     box_rows = [
         index for index, row in enumerate(opened) if row != closed[index]
     ]
-    assert box_rows == list(range(4, 4 + MAX_VISIBLE_ROWS + 2))
+    # Twelve categories would need 15 rows; the list stops at 90% of the
+    # 20 screen rows.
+    assert _list_bottom(screen_rows=20) == 18
+    assert box_rows == list(range(4, 18))
     width = len(opened[4].rstrip())
     for index in box_rows:
         assert opened[index][width:] == closed[index][width:]
+
+
+def test_long_list_reaches_down_to_ninety_percent_of_the_screen() -> None:
+    size = (80, 50)
+    host, question = _screen(tree=_long_tree())
+    opened = _rows(host, size)
+    question.keypress((80,), "esc")
+    closed = _rows(host, size)
+
+    bottom = _list_bottom(screen_rows=50)
+    assert bottom == 45
+    box_rows = [
+        index for index, row in enumerate(opened) if row != closed[index]
+    ]
+    assert box_rows == list(range(4, bottom))
+    assert opened[bottom - 1].startswith("└")
+    # The bottom tenth of the screen stays free.
+    assert opened[bottom:] == closed[bottom:]
+    # Borders and the "+ new" row leave 38 rows for categories.
+    shown = [row for row in opened if row.startswith("│  category")]
+    assert len(shown) == bottom - 4 - 3
+
+
+def test_short_list_is_only_as_tall_as_it_needs() -> None:
+    host, question = _screen(tree=_long_tree())
+    for character in "category00":  # category000 .. category009
+        question.keypress((80,), character)
+    rows = _rows(host, (80, 50))
+    assert rows[4].startswith("┌")
+    assert "category009" in rows[15]
+    assert rows[16].startswith("└")
+    assert "Question" not in rows[16] and not rows[17].strip()
 
 
 def test_cursor_and_keys_stay_with_the_field() -> None:
@@ -208,7 +250,18 @@ def test_box_shrinks_to_the_rows_below_the_field() -> None:
     assert len(rows) == 8
     assert rows[4].startswith("┌")
     assert NEW_ROW_LABEL in rows[5]
-    assert rows[7].startswith("└")
+    assert rows[6].startswith("└")
+    assert "Question 6" in rows[7]  # below 90%: not covered
+
+
+def test_field_near_the_bottom_still_gets_a_list() -> None:
+    """With no room above the 90% line the list uses the rows that are
+    left: a list over the last rows beats no list at all."""
+    host, _ = _screen()
+    rows = _rows(host, (80, 7))
+    assert rows[4].startswith("┌")
+    assert NEW_ROW_LABEL in rows[5]
+    assert rows[6].startswith("└")
 
 
 def test_no_box_when_there_is_no_room_for_one() -> None:

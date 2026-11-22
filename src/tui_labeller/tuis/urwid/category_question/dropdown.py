@@ -11,8 +11,9 @@ import urwid
 from typeguard import typechecked
 
 NEW_ROW_LABEL = "+ new category..."
-# Rows inside the box: the "+ new" row plus seven matches.
-MAX_VISIBLE_ROWS = 8
+# The list may reach down to this share of the screen height; the rows
+# below it stay visible.
+LIST_BOTTOM_PERCENT = 90
 MIN_WIDTH = 40
 KEY_HINT = "Up/Down Enter Tab Esc"
 ATTR_DROPDOWN = "dropdown"
@@ -30,9 +31,11 @@ def dropdown_size(
 
     *longest* is the longest category of the whole tree, not of the
     current matches, so the box keeps its width while the user types.
+    The height has room for every match; DisplayOnlyPopUpTarget, which
+    knows the screen, cuts it to what fits.
     """
     width = min(maxcol, max(MIN_WIDTH, longest + _CHROME_COLS))
-    height = _BORDER_ROWS + 1 + min(row_count, MAX_VISIBLE_ROWS - 1)
+    height = _BORDER_ROWS + 1 + row_count
     return width, height
 
 
@@ -166,6 +169,9 @@ class DisplayOnlyPopUpTarget(
     the widgets beneath it without focus.  The dropdown is only a view
     of the category field, so keys, focus and cursor must stay with the
     questionnaire.
+
+    The pop-up reaches down to LIST_BOTTOM_PERCENT of the screen height
+    at most, so the bottom of the screen stays visible.
     """
 
     MIN_COLS = 10
@@ -180,7 +186,12 @@ class DisplayOnlyPopUpTarget(
         left, top, (widget, width, height) = pop_up
         maxcol, maxrow = size
         width = min(width, maxcol - left)
-        height = min(height, maxrow - top)
+        room = maxrow * LIST_BOTTOM_PERCENT // 100 - top
+        if room < self.MIN_ROWS:
+            # The field sits low on the screen: use the rows that are left
+            # rather than show no list at all.
+            room = maxrow - top
+        height = min(height, room)
         if width < self.MIN_COLS or height < self.MIN_ROWS:
             return bottom
         box = urwid.CompositeCanvas(widget.render((width, height)))

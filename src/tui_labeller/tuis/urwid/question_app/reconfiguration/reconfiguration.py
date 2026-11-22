@@ -55,6 +55,9 @@ from tui_labeller.tuis.urwid.QuestionnaireApp import (  # noqa: E402
 from tui_labeller.tuis.urwid.receipts.AccountQuestions import (  # noqa: E402
     AccountQuestions,
 )
+from tui_labeller.tuis.urwid.receipts.BaseQuestions import (  # noqa: E402
+    BaseQuestions,
+)
 from tui_labeller.tuis.urwid.receipts.OptionalQuestions import (  # noqa: E402
     OptionalQuestions,
 )
@@ -466,11 +469,16 @@ def handle_withdrawal_toggle(
     preserved_answers: List[Union[None, Tuple[str, Any]]],
     labelled_receipts: List[Receipt],
     toggle_answer: str,
+    base_questions: Optional["BaseQuestions"] = None,
 ) -> "QuestionnaireApp":
     """Handle reconfiguration when the withdrawal toggle is answered.
 
     When 'y': removes category question, injects withdrawal questions.
     When 'n': removes withdrawal questions, re-adds category question.
+
+    *base_questions* builds the re-added category question, so it keeps
+    the category list of the original one; without it the question is
+    free text.
     """
     has_withdrawal = _has_withdrawal_questions(tui=tui)
     has_category = _has_category_question(tui=tui)
@@ -531,10 +539,6 @@ def handle_withdrawal_toggle(
             if inp.base_widget.question_data.question not in withdrawal_ids
         ]
 
-        from tui_labeller.tuis.urwid.receipts.BaseQuestions import (
-            BaseQuestions,
-        )
-
         # Re-add category question after the toggle if missing.
         if not has_category:
             toggle_idx = None
@@ -544,7 +548,8 @@ def handle_withdrawal_toggle(
                     break
             if toggle_idx is not None:
                 new_q_data.insert(
-                    toggle_idx + 1, BaseQuestions().get_category_question()
+                    toggle_idx + 1,
+                    (base_questions or BaseQuestions()).get_category_question(),
                 )
 
         # Re-add "Amount paid from account:" before "Change returned".
@@ -1390,6 +1395,7 @@ def get_configuration(
         Dict[AccountConfig, Dict[int, List[Transaction]]]
     ] = None,
     prefilled_receipt: Optional[Receipt] = None,
+    base_questions: Optional["BaseQuestions"] = None,
 ) -> "QuestionnaireApp":
     """Reconfigure the questionnaire based on user answers."""
     reconfig_answers = collect_reconfiguration_questions(
@@ -1431,6 +1437,7 @@ def get_configuration(
                 preserved_answers=preserve_current_answers(tui=tui),
                 labelled_receipts=labelled_receipts,
                 toggle_answer=str(answer),
+                base_questions=base_questions,
             )
             # Prefill withdrawal questions from existing receipt metadata.
             if (

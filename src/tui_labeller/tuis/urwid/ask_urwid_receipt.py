@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from copy import deepcopy
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from hledger_receipt_processing.matching.ask_user_action import (
@@ -26,6 +26,7 @@ from hledger_receipt_processing.receipt_transaction_matching.get_bank_data_from_
 from typeguard import typechecked
 from urwid import AttrMap
 
+from tui_labeller.categories.category_store import CategoryStore
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
     DateTimeQuestion,
 )
@@ -364,6 +365,30 @@ def _flatten_category_hierarchy(d: dict, prefix: str = "") -> list[str]:
     return paths
 
 
+@typechecked
+def build_category_store(*, config: Any) -> CategoryStore | None:
+    """The categories the category question offers, or None when the config
+    carries no category tree (the question then stays a free-text field).
+
+    The store shares the tree held by ``config.category_namespace`` (the
+    ``_hierarchy`` of hledger-core's CategoryNamespace), so a category
+    created while labelling is known to the rest of the run at once, and it
+    saves to the configured categories file.
+    """
+    namespace = getattr(config, "category_namespace", None)
+    hierarchy = getattr(namespace, "_hierarchy", None)
+    if not isinstance(hierarchy, dict):
+        return None
+    yaml_path: str | None = None
+    file_names = getattr(config, "file_names", None)
+    dir_paths = getattr(config, "dir_paths", None)
+    if file_names is not None and dir_paths is not None:
+        yaml_path = file_names.get_filepath(
+            dir_path_config=dir_paths, filename="categories_filename"
+        )
+    return CategoryStore(hierarchy=hierarchy, yaml_path=yaml_path)
+
+
 def _get_ai_suggestions(
     config: Config,
     image_path: str,
@@ -447,7 +472,10 @@ def build_receipt_from_urwid(
         account_infos_str=account_infos_str,
         accounts_without_csv=accounts_without_csv,
     )
-    base_questions = BaseQuestions(ai_suggestions=ai_suggestions)
+    base_questions = BaseQuestions(
+        ai_suggestions=ai_suggestions,
+        category_store=build_category_store(config=config),
+    )
     optional_questions = OptionalQuestions(
         labelled_receipts=labelled_receipts,
         ai_suggestions=ai_suggestions,
@@ -483,6 +511,7 @@ def build_receipt_from_urwid(
         config=config,
         csv_transactions_per_account=csv_transactions_per_account,
         prefilled_receipt=prefilled_receipt,
+        base_questions=base_questions,
     )
 
     _t3 = _time.monotonic()
@@ -560,6 +589,7 @@ def build_receipt_from_urwid(
                 config=config,
                 csv_transactions_per_account=csv_transactions_per_account,
                 prefilled_receipt=prefilled_receipt,
+                base_questions=base_questions,
             )
 
             # Update the pile based on the reconfiguration.
@@ -588,6 +618,7 @@ def build_receipt_from_urwid(
                 config=config,
                 csv_transactions_per_account=csv_transactions_per_account,
                 prefilled_receipt=prefilled_receipt,
+                base_questions=base_questions,
             )
 
             # Update the pile based on the reconfiguration.

@@ -12,6 +12,16 @@ from typeguard import typechecked
 from urwid import AttrMap
 
 from tui_labeller.file_read_write_helper import write_to_file
+from tui_labeller.tuis.urwid.category_question.CategoryQuestion import (
+    NEW_CATEGORY_KEY,
+    CategoryQuestion,
+)
+from tui_labeller.tuis.urwid.category_question.CategoryTreeScreen import (
+    CategoryTreeScreen,
+)
+from tui_labeller.tuis.urwid.category_question.dropdown import (
+    DisplayOnlyPopUpTarget,
+)
 from tui_labeller.tuis.urwid.focus_markers import (
     focus_markers_enabled,
     format_focus_marker,
@@ -217,9 +227,12 @@ class QuestionnaireApp:
             ]
         )
 
-        # Setup main loop
+        # Setup main loop.  The host draws the category dropdown over the
+        # questions below the field; keys, focus and cursor stay with the
+        # questionnaire.
+        self.popup_host = DisplayOnlyPopUpTarget(self.columns)
         self.loop = urwid.MainLoop(
-            self.columns, self.palette, unhandled_input=self._handle_input
+            self.popup_host, self.palette, unhandled_input=self._handle_input
         )
 
         # Focus markers (opt-in): after every redraw whose focused question
@@ -303,6 +316,8 @@ class QuestionnaireApp:
 
         elif key == "reconfigurer":
             raise urwid.ExitMainLoop()
+        elif key == NEW_CATEGORY_KEY:
+            self._open_category_tree()
         elif key == "terminator":
             missing = self.first_unanswered_required()
             if missing is None:
@@ -341,6 +356,31 @@ class QuestionnaireApp:
             ):
                 focused_widget.update_autocomplete()
 
+    def _open_category_tree(self) -> None:
+        """Show the new-category screen instead of the questionnaire until the
+        user picks or creates a category, or cancels."""
+        widget = self.get_focus_widget()
+        if not isinstance(widget, CategoryQuestion):
+            return
+
+        def use(path: str) -> None:
+            self.loop.widget = self.popup_host
+            # Continue exactly as when the category is answered in the
+            # field (a reconfigurer ends this run of the main loop).
+            result = widget.accept_category(path=path)
+            if result is not None:
+                self._handle_input(result)
+
+        def cancel() -> None:
+            self.loop.widget = self.popup_host
+
+        self.loop.widget = CategoryTreeScreen(
+            store=widget.store,
+            typed_text=widget.edit_text,
+            on_use=use,
+            on_cancel=cancel,
+        )
+
     def _save_results(self):
         """Save questionnaire results before exit."""
         results = {}
@@ -369,6 +409,13 @@ class QuestionnaireApp:
                 # answer to collect; it is never a resume target.
                 continue
             if not widget.has_answer():
+                return index
+            if (
+                isinstance(widget, CategoryQuestion)
+                and not widget.is_known_category()
+            ):
+                # Text that is not an existing category is not an answer
+                # (e.g. an old receipt reopened with a misspelt category).
                 return index
         return default
 

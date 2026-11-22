@@ -46,8 +46,8 @@ Bookkeeping expense category: groc|
 ```
 
 - Row 0 is always `+ new category...`. Below it: the matching categories.
-- At most 8 rows are visible, row 0 included; the list scrolls with the
-  highlight. If fewer rows fit between the field and the bottom of the
+- At most 8 rows are visible, row 0 included. Row 0 stays in place while
+  the matches scroll with the highlight. If fewer rows fit between the field and the bottom of the
   screen, the list shrinks to what fits. The bottom border shows a key hint
   and `matches of total`.
 - Matching is case-insensitive "contains". `*` splits the text into chunks
@@ -166,8 +166,8 @@ New code, all under `src/tui_labeller/`:
 | `categories/category_store.py`                       | `CategoryStore`, no urwid. Paths, `exists`, `children`, `matches(text)`, `plan_addition(parent, text)` (preview, errors, look-alikes), `add(path)` |
 | `categories/category_yaml.py`                        | canonical dump, verified atomic save                                                                                                               |
 | `tuis/urwid/category_question/CategoryQuestion.py`   | `CategoryQuestion(InputValidationQuestion)`: text, matches, highlight, open/closed, all key handling                                               |
-| `tuis/urwid/category_question/dropdown.py`           | the list view, its `PopUpLauncher`, and a display-only pop-up host                                                                                 |
-| `tuis/urwid/category_question/CategoryTreeScreen.py` | the new-category screen, built on urwid's tree widgets; reports `use(path)` or `cancel`                                                            |
+| `tuis/urwid/category_question/dropdown.py`           | the list view and a display-only pop-up host                                                                                                       |
+| `tuis/urwid/category_question/CategoryTreeScreen.py` | the new-category screen: a collapsible tree list over `CategoryStore`; reports `use(path)` or `cancel`                                             |
 
 Changes to existing code:
 
@@ -182,9 +182,11 @@ Changes to existing code:
   `config.category_namespace` and the configured categories path, and passes
   `base_questions` to `get_configuration`, so the withdrawal toggle re-adds
   the same category question instead of a bare `BaseQuestions()` one.
-- `create_question_widget` builds the launcher-wrapped `CategoryQuestion`
-  for `CategoryQuestionData`. `base_widget` still resolves to the question,
-  so existing `isinstance(..., InputValidationQuestion)` checks keep working.
+- `create_question_widget` builds a `CategoryQuestion` for
+  `CategoryQuestionData`, wrapped in an `AttrMap` like every other question.
+  The question attaches the pop-up to its own canvas instead of sitting in
+  a `PopUpLauncher`, because `prefill_receipt` reaches questions through
+  `AttrMap._original_widget`.
 - `QuestionnaireApp`: wraps its top widget in the pop-up host; handles a new
   `"new_category"` key by swapping `loop.widget` to the tree screen and back;
   `first_unanswered_required` treats an unknown category as unanswered.
@@ -198,7 +200,7 @@ focus and cursor stay with the questionnaire. All logic then lives in
 Data flow: keys reach `CategoryQuestion`, which updates its state from
 `CategoryStore.matches` and returns a navigation key (`reconfigurer`,
 `previous_question`, `new_category`) exactly like the other questions. The
-launcher renders the list from that state. The tree screen talks only to
+list is rendered from that state. The tree screen talks only to
 `CategoryStore` and reports back through two callbacks.
 
 ## Testing

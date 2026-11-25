@@ -44,6 +44,7 @@ from tui_labeller.tuis.urwid.question_data_classes import (
     InputValidationQuestionData,
     VerticalMultipleChoiceQuestionData,
 )
+from tui_labeller.tuis.urwid.screen_session import current_screen
 
 
 def _resolve_log_file() -> str:
@@ -69,6 +70,17 @@ logging.basicConfig(
     force=True,
 )
 log = logging.info
+
+PROGRESS_CELLS = 10
+
+
+@typechecked
+def render_progress(*, fraction: Optional[float]) -> str:
+    """The loading bar for *fraction* of the work done; nothing for None."""
+    if fraction is None:
+        return ""
+    filled = max(0, min(PROGRESS_CELLS, round(fraction * PROGRESS_CELLS)))
+    return "AI " + "▰" * filled + "▱" * (PROGRESS_CELLS - filled)
 
 
 class QuestionnaireApp:
@@ -104,7 +116,23 @@ class QuestionnaireApp:
         # Called with (index left, index reached) when the focus moved to
         # another question; ai_session.AiSession uses it.
         self.on_question_change: Optional[Callable[[int, int], None]] = None
+        # Called on Alt+h, which then never reaches a question; set by
+        # ai_session.AiSession when boxes are drawn on the receipt photo.
+        self.on_toggle_highlights: Optional[Callable[[], None]] = None
         self.pile = urwid.Pile([])
+        # The top row: the header on the left and, while the AI suggestions
+        # are being worked out, a loading bar in the centre (set_progress).
+        self.header_text = urwid.Text(header)
+        self.progress_text = urwid.Text("", align="center")
+        # The header keeps its width; a blank of the same width on the
+        # right keeps the bar in the centre of the row.
+        self.header_widget = urwid.Columns(
+            [
+                ("pack", self.header_text),
+                self.progress_text,
+                ("pack", urwid.Text(" " * len(header.splitlines()[0]))),
+            ]
+        )
         self.history_store = (
             {}
             # New: Dictionary to store history suggestions {question_id:
@@ -176,6 +204,7 @@ class QuestionnaireApp:
         # Build questionnaire
         build_questionnaire(
             header=header,
+            header_widget=self.header_widget,
             inputs=self.inputs,
             questions=self.questions,
             descriptor_col_width=self.descriptor_col_width,
@@ -235,8 +264,15 @@ class QuestionnaireApp:
         # questions below the field; keys, focus and cursor stay with the
         # questionnaire.
         self.popup_host = DisplayOnlyPopUpTarget(self.columns)
+        # Inside a screen session (one receipt) the questionnaires share
+        # the terminal screen, so a rebuilt one draws over the previous one
+        # instead of flashing the shell in between.
         self.loop = urwid.MainLoop(
-            self.popup_host, self.palette, unhandled_input=self._handle_input
+            self.popup_host,
+            self.palette,
+            screen=current_screen(),
+            unhandled_input=self._handle_input,
+            input_filter=self._filter_input,
         )
 
         # Focus markers (opt-in): after every redraw whose focused question
@@ -258,6 +294,33 @@ class QuestionnaireApp:
         # urwid's MainLoop.entering_idle() calls self.draw_screen(), so an
         # instance attribute shadows the method.
         self.loop.draw_screen = draw_and_mark
+
+    def _filter_input(self, keys: List[Any], raw: List[int]) -> List[Any]:
+        """Keys that act on the whole questionnaire (Alt+h) are taken here,
+        before any question sees them."""
+        if self.on_toggle_highlights is not None and "meta h" in keys:
+            self.on_toggle_highlights()
+            keys = [key for key in keys if key != "meta h"]
+        return keys
+
+    @typechecked
+    def set_progress(self, *, fraction: Optional[float]) -> None:
+        """Show how far the AI suggestions are (a bar at the top centre); None
+        takes the bar away."""
+        self.progress_text.set_text(
+            ("loading", render_progress(fraction=fraction))
+        )
+
+    @typechecked
+    def add_navigation_hint(self, *, text: str) -> None:
+        """Add a line to the Navigation panel, once."""
+        pile = self.navigation_display.base_widget
+        indent = self.indentation_spaces * " "
+        if any(widget.text == f"{indent}{text}" for widget, _ in pile.contents):
+            return
+        pile.contents.append(
+            (urwid.Text(f"{indent}{text}"), pile.options("pack", None))
+        )
 
     def _focused_question_id(self) -> Optional[str]:
         index = self.get_focus()

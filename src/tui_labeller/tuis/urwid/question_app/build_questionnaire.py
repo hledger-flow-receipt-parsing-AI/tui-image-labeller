@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import urwid
 from typeguard import typechecked
@@ -48,6 +48,8 @@ def build_questionnaire(
     history_suggestion_box: AttrMap,
     error_display: AttrMap,
     history_store: Dict,
+    # The top row; the header text alone when not given.
+    header_widget: Optional[urwid.Widget] = None,
 ) -> None:
     # Manual
     """Build the complete questionnaire UI."""
@@ -63,7 +65,9 @@ def build_questionnaire(
                 f"{base_id}_{question_counts[base_id]}"
             )
 
-    pile_contents = [(urwid.Text(header), ("pack", None))]
+    if header_widget is None:
+        header_widget = urwid.Text(header)
+    pile_contents = [(header_widget, ("pack", None))]
 
     for i, question_data in enumerate(questions):
         widget: Union[

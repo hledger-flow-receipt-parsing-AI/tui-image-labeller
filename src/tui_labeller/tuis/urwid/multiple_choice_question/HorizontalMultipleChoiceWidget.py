@@ -327,5 +327,9 @@ class HorizontalMultipleChoiceWidget(urwid.WidgetWrap):
             )
 
         self.selected = value
-        self._update_selection(self.question_data.choices.index(value))
+        index = self.question_data.choices.index(value)
+        self._update_selection(index)
         self.confirm_selection()
+        # Enter selects the focused choice, so the focus moves along: a
+        # prefilled "y" is not turned into "n" by confirming it.
+        self._update_focus(selected_ans_col=index, select_ans=False)

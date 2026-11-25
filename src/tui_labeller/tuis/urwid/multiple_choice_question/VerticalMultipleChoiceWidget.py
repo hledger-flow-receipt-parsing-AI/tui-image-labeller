@@ -46,6 +46,9 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
             question_data.extra_data
             and question_data.extra_data.get("scrollable")
         )
+        # The choices the typed number refers to; refresh_choices() keeps
+        # the answer by value when question_data.choices are replaced.
+        self._choices_shown: List[str] = list(question_data.choices)
         super().__init__(caption=self._get_batch_caption())
         self.input_type: InputType = InputType.INTEGER
         self.ai_suggestions = ai_suggestions or []
@@ -54,12 +57,26 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         self.history_suggestion_box = history_suggestion_box
         self.pile = pile
         self._in_autocomplete: bool = False
+        # True while the answer shown is a prefilled guess the user has
+        # not touched: the first typed digit then replaces it.
+        self._default_untouched: bool = False
         if question_data.navigation_display:
             self.navigation_display: Union[None, AttrMap] = (
                 question_data.navigation_display
             )
         else:
             self.navigation_display: Union[None, AttrMap] = None
+
+    @typechecked
+    def mark_default_untouched(self) -> None:
+        """Record that the current answer is an untouched prefilled guess."""
+        self._default_untouched = True
+
+    @typechecked
+    def expand_choices(self) -> None:
+        """Show the list of choices again (around the current answer); an
+        answered question otherwise shows only its answer."""
+        self.set_caption(self._get_batch_caption())
 
     @typechecked
     def _get_batch_choices(self) -> List[str]:
@@ -194,6 +211,7 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         max_batch = (len(self.question_data.choices) - 1) // self.BATCH_SIZE
         if self.current_batch < max_batch:
             self.current_batch += 1
+            self._default_untouched = False
             self.set_caption(self._get_batch_caption())
             self.set_edit_text("")  # Clear input for new batch
             return True
@@ -208,6 +226,7 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         """
         if self.current_batch > 0:
             self.current_batch -= 1
+            self._default_untouched = False
             self.set_caption(self._get_batch_caption())
             self.set_edit_text("")  # Clear input for new batch
             return True
@@ -223,6 +242,7 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         max_index = len(self.question_data.choices) - 1
         if max_index < 0:
             return
+        self._default_untouched = False
         if self.edit_text.strip():
             try:
                 current = int(self.edit_text)
@@ -352,6 +372,7 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         elif key in ("delete", "backspace"):
             # Handle backspace/delete by calling super() first to update the
             # text
+            self._default_untouched = False
             result = super().keypress(size, key)
             # Update caption to show the full batch question
             self.set_caption(self._get_batch_caption())
@@ -363,8 +384,11 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
             batch_choices = self._get_batch_choices()
             batch_end = batch_start + len(batch_choices)
 
-            # Check if the new input would be valid
-            new_text = self.edit_text + key
+            # Check if the new input would be valid.  A prefilled guess
+            # is replaced by the first digit, not extended ("1" + "2" is
+            # choice 2, not choice 12).
+            new_text = ("" if self._default_untouched else self.edit_text) + key
+            self._default_untouched = False
             try:
                 value: int = int(new_text)
                 # if batch_start <= value <= batch_end :
@@ -541,13 +565,15 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         it if it remains in the new choices. Adjusts the current batch
         to ensure the choices are displayed correctly.
         """
-        # Preserve the current answer if it exists and is still valid
+        # Preserve the current answer (the choice the number pointed at in
+        # the list as it was) if it is still among the choices.
         current_answer = None
-        if self.has_answer():
+        if self.edit_text.strip():
             try:
-                current_answer = self.get_answer()
+                current_answer = self._choices_shown[int(self.edit_text)]
             except (ValueError, IndexError):
                 current_answer = None
+        self._choices_shown = list(self.question_data.choices)
 
         # Reset the current batch if it's out of bounds for the new choices
         max_batch = (len(self.question_data.choices) - 1) // self.BATCH_SIZE

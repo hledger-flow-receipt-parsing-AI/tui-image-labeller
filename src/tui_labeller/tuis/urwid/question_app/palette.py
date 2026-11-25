@@ -34,4 +34,6 @@ def setup_palette() -> List[tuple]:
         # Category dropdown and new-category screen.
         ("dropdown", "white", "dark blue"),
         ("dropdown_selected", "black", "light cyan"),
+        # The loading bar while the AI suggestions are worked out.
+        ("loading", "yellow", "black"),
     ]

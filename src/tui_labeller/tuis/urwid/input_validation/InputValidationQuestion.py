@@ -254,9 +254,10 @@ class InputValidationQuestion(urwid.Edit):
 
     def shown_ai_suggestions(self) -> List[AISuggestion]:
         """The suggestions in the AI panel: those that still match what
-        was typed, best first (Alt+a accepts the first)."""
+        was typed, best first (Alt+a accepts the first).  A prefilled
+        guess was not typed: every suggestion stays on offer."""
         remaining = get_filtered_suggestions(
-            input_text=self.edit_text,
+            input_text="" if self._default_untouched else self.edit_text,
             available_suggestions=[s.question for s in self.ai_suggestions],
         )
         return [s for s in self.ai_suggestions if s.question in remaining][

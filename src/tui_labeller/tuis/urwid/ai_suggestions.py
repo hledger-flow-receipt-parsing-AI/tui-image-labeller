@@ -6,6 +6,9 @@ suggestions" panel, each with the key that accepts it: Alt+a the first,
 Alt+b the second, Alt+c the third, and so on (Alt+u also accepts the
 first).  A plain digit still answers a multiple choice question with the
 choice of that number.  Suggestions never replace an answer the user gave.
+
+An empty suggestion means "leave this optional question empty" (most
+receipts print no subtotal); the panel calls it "nothing".
 """
 
 from typing import Any, List, Optional, Tuple
@@ -15,6 +18,9 @@ from hledger_core.TransactionObjects.ShopId import ShopId
 from typeguard import typechecked
 
 BOX_HEADER = "AI suggestions:\n"
+# The suggestion to leave an optional question empty, and its panel text.
+NOTHING = ""
+NOTHING_SHOWN = "nothing"
 # One key per suggestion shown (hledger-ai sends five at most). Not
 # Alt+<digit>: Ptyxis and GNOME Terminal switch tabs with it, so the TUI
 # never gets it. No terminal, desktop or question here uses Alt+a to Alt+e.
@@ -54,7 +60,7 @@ def format_suggestions(
     if not suggestions:
         return "-"
     return "\n".join(
-        f"{_alt_key(place=place)}{s.question}"
+        f"{_alt_key(place=place)}{s.question or NOTHING_SHOWN}"
         f" ({_percent(probability=s.probability)})"
         for place, s in enumerate(suggestions[:limit])
     )

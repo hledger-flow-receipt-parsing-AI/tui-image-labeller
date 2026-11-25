@@ -10,7 +10,6 @@ if TYPE_CHECKING:
         ActionDataset,
     )
 
-import urwid
 from hledger_config.config.AccountConfig import AccountConfig
 from hledger_config.config.load_config import Config
 from hledger_core.Currency import Currency
@@ -68,6 +67,11 @@ from tui_labeller.tuis.urwid.receipts.create_receipt import (
 from tui_labeller.tuis.urwid.receipts.OptionalQuestions import OptionalQuestions
 from tui_labeller.tuis.urwid.receipts.WithdrawalQuestions import (
     WithdrawalQuestions,
+)
+from tui_labeller.tuis.urwid.screen_session import (
+    resume_screen,
+    shared_screen,
+    suspend_screen,
 )
 
 logger = logging.getLogger(__name__)
@@ -437,10 +441,11 @@ def build_category_store(*, config: Any) -> CategoryStore | None:
 
 @typechecked
 def _open_ai_session(
-    *, config: Config, image_paths: list[str]
+    *, config: Config, image_paths: list[str], highlighter: Any = None
 ) -> AiSession | None:
     """Suggestions from the locally trained models of hledger-ai for this
-    receipt (``hledger_ai.labeller``).
+    receipt (``hledger_ai.labeller``); *highlighter* draws their evidence on
+    the receipt photo (see ai_session).
 
     None when hledger-ai is not installed, nothing is trained yet
     (``--train``), or ``--skip-ai`` was given.
@@ -460,7 +465,9 @@ def _open_ai_session(
     except Exception:
         logger.exception("Opening the AI suggester failed")
         return None
-    return AiSession(suggester=suggester) if suggester is not None else None
+    if suggester is None:
+        return None
+    return AiSession(suggester=suggester, highlighter=highlighter)
 
 
 def _get_ai_suggestions(
@@ -526,6 +533,41 @@ def build_receipt_from_urwid(
     csv_transactions_per_account: None | (
         dict[AccountConfig, dict[int, list[Transaction]]]
     ) = None,
+    # Draws the evidence of the AI suggestions on the receipt photo (the
+    # receipt window of hledger-receipt-processing); None: no boxes.
+    highlighter: Any = None,
+) -> Receipt:
+    """Label one receipt in the TUI.
+
+    Its questionnaires (one per reconfiguration) share one terminal
+    screen, so the TUI stays on screen between questions.
+    """
+    with shared_screen():
+        return _build_receipt_from_urwid(
+            config=config,
+            raw_receipt_img_filepaths=raw_receipt_img_filepaths,
+            hledger_account_infos=hledger_account_infos,
+            accounts_without_csv=accounts_without_csv,
+            labelled_receipts=labelled_receipts,
+            prefilled_receipt=prefilled_receipt,
+            csv_transactions_per_account=csv_transactions_per_account,
+            highlighter=highlighter,
+        )
+
+
+@typechecked
+def _build_receipt_from_urwid(
+    *,
+    config: Config,
+    raw_receipt_img_filepaths: list[str],
+    hledger_account_infos: set[HledgerFlowAccountInfo],
+    accounts_without_csv: set[str],
+    labelled_receipts: list[Receipt],
+    prefilled_receipt: Receipt | None,
+    csv_transactions_per_account: None | (
+        dict[AccountConfig, dict[int, list[Transaction]]]
+    ) = None,
+    highlighter: Any = None,
 ) -> Receipt:
     import time as _time
 
@@ -537,7 +579,9 @@ def build_receipt_from_urwid(
     ai_session: AiSession | None = None
     if raw_receipt_img_filepaths:
         ai_session = _open_ai_session(
-            config=config, image_paths=raw_receipt_img_filepaths
+            config=config,
+            image_paths=raw_receipt_img_filepaths,
+            highlighter=highlighter,
         )
         if ai_session is not None:
             ai_suggestions = ai_session.initial()
@@ -653,7 +697,7 @@ def build_receipt_from_urwid(
             tui
         ):
             # Suspend urwid to run the matching CLI via input().
-            tui.loop.screen.stop()
+            suspend_screen(screen=tui.loop.screen)
 
             abandoned = False
             try:
@@ -676,7 +720,7 @@ def build_receipt_from_urwid(
             finally:
                 if not abandoned:
                     # Resume urwid.
-                    tui.loop.screen.start()
+                    resume_screen(screen=tui.loop.screen)
 
             if abandoned:
                 # "This receipt is not mine": leave the questionnaire for
@@ -706,7 +750,7 @@ def build_receipt_from_urwid(
             )
 
             # Update the pile based on the reconfiguration.
-            pile_contents = [(urwid.Text(tui.header), ("pack", None))]
+            pile_contents = [(tui.header_widget, ("pack", None))]
             for some_widget in tui.inputs:
                 pile_contents.append((some_widget, ("pack", None)))
             tui.pile.contents = pile_contents
@@ -741,7 +785,7 @@ def build_receipt_from_urwid(
             )
 
             # Update the pile based on the reconfiguration.
-            pile_contents = [(urwid.Text(tui.header), ("pack", None))]
+            pile_contents = [(tui.header_widget, ("pack", None))]
             for some_widget in tui.inputs:
                 pile_contents.append((some_widget, ("pack", None)))
             tui.pile.contents = pile_contents

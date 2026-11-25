@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import Dict, List, Optional, Union
 
 import urwid
 from hledger_core.Currency import Currency
@@ -6,6 +6,7 @@ from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.question_data_classes import (
+    AISuggestion,
     HorizontalMultipleChoiceQuestionData,
     InputValidationQuestionData,
     VerticalMultipleChoiceQuestionData,
@@ -18,9 +19,11 @@ class AccountQuestions:
         self,
         account_infos_str: List[str],
         accounts_without_csv: set[str],
+        ai_suggestions: Optional[Dict[str, List[AISuggestion]]] = None,
     ):
         """account_infos are <account holder name>:<bank name>:<account_type>
         they are a single string as they come directly from the arg parser."""
+        self._ai: Dict[str, List[AISuggestion]] = ai_suggestions or {}
         self.account_infos_str: List[str] = account_infos_str
         self.accounts_without_csv: set[str] = accounts_without_csv
         self.belongs_to_options: List[str] = sorted(
@@ -59,7 +62,7 @@ class AccountQuestions:
                 reconfigurer=True,
                 terminator=False,
                 choices=self.belongs_to_options,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("bank_account", []),
                 nr_of_ans_per_batch=8,
                 navigation_display=urwid.AttrMap(
                     urwid.Pile(
@@ -89,13 +92,13 @@ class AccountQuestions:
                 reconfigurer=False,
                 terminator=False,
                 choices=[currency.value for currency in Currency],
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("currency", []),
             ),
             InputValidationQuestionData(
                 question="Amount paid from account:",
                 question_id="amount",
                 input_type=InputType.FLOAT,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("amount", []),
                 history_suggestions=[],
                 ans_required=True,
                 reconfigurer=False,
@@ -105,7 +108,7 @@ class AccountQuestions:
                 question="Change returned to account:",
                 question_id="change",
                 input_type=InputType.FLOAT,
-                ai_suggestions=[],
+                ai_suggestions=self._ai.get("change", []),
                 history_suggestions=[],
                 ans_required=True,
                 reconfigurer=False,

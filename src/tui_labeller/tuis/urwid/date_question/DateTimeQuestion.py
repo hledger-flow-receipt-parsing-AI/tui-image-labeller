@@ -5,6 +5,12 @@ import urwid
 from typeguard import typechecked
 from urwid.widget.pile import Pile
 
+from tui_labeller.tuis.urwid.ai_suggestions import (
+    MAX_SHOWN,
+    alt_digit,
+    format_suggestions,
+    show_in_box,
+)
 from tui_labeller.tuis.urwid.date_question.helper import (
     update_values,
 )
@@ -52,6 +58,9 @@ class DateTimeQuestion(urwid.Edit):
         if not self.date_only:
             self.time_values = [today.hour, today.minute]
         self.update_text()  # Set initial text based on today's date/time
+        # A suggested date is a better start than today: receipts are
+        # labelled days or months after the purchase.
+        self.apply_first_ai_suggestion()
         self.initalise_autocomplete_suggestions()
 
     def keypress(self, size, key):
@@ -61,11 +70,14 @@ class DateTimeQuestion(urwid.Edit):
             return None
 
         if key == "meta u":
-            if (
-                self.ai_suggestions
-            ):  # If there's at least 1 suggestion, accept it.
-                self.apply_first_ai_suggestion()
+            if self.apply_first_ai_suggestion():
                 return "next_question"
+            return None
+        place = alt_digit(key=key)
+        if place is not None:
+            if self.apply_ai_suggestion(place=place):
+                return "next_question"
+            return None
 
         if key == "page up":
             # Set error message for page up from the first question
@@ -87,8 +99,10 @@ class DateTimeQuestion(urwid.Edit):
                 current_text=self.get_edit_text(),
                 cursor_pos=self.edit_pos,
             )
-            if len(matching_suggestions) == 1:
-                self.apply_first_ai_suggestion()
+            if (
+                len(matching_suggestions) == 1
+                and self.apply_first_ai_suggestion()
+            ):
                 return "next_question"
             else:
                 return self.move_to_next_part()
@@ -253,48 +267,43 @@ class DateTimeQuestion(urwid.Edit):
             return "previous_question"
 
     def update_autocomplete(self):
-        if self._in_autocomplete:  # Prevent recursion
-            return
-
+        """Show the suggested dates in the AI panel."""
         if not self.ai_suggestion_box:
             return
-
-        matching_suggestions: List[str] = get_matching_unique_suggestions(
-            suggestions=self.ai_suggestions,
-            current_text=self.get_edit_text(),
-            cursor_pos=self.edit_pos,
+        show_in_box(
+            box=self.ai_suggestion_box,
+            body=format_suggestions(suggestions=self.ai_suggestions),
         )
-        suggestions_text = ", ".join(matching_suggestions)
 
-        self._in_autocomplete = True  # Set flag
+    def apply_first_ai_suggestion(self) -> bool:
+        """Take over the first suggestion that reads as a date (and time).
 
-        self.ai_suggestion_box.base_widget.set_text(suggestions_text)
-        self.ai_suggestion_box.base_widget._invalidate()
+        Returns False when there is none; the answer is then left alone.
+        """
+        for suggestion in self.ai_suggestions:
+            try:
+                self.set_answer(suggestion.question)
+            except ValueError:
+                continue
+            return True
+        return False
 
-        if "*" in self.edit_text and len(matching_suggestions) == 1:
-            new_text = matching_suggestions[0]
-            self.set_edit_text(new_text)
-            self.set_edit_pos(len(new_text) - 1)
+    def apply_ai_suggestion(self, *, place: int) -> bool:
+        """Take over the suggestion at *place* in the AI panel (Alt+<place>).
 
-        self._in_autocomplete = False  # Reset flag
-
-    def apply_first_ai_suggestion(self) -> None:
-        matching_suggestions: List[str] = get_matching_unique_suggestions(
-            suggestions=self.ai_suggestions,
-            current_text=self.get_edit_text(),
-            cursor_pos=self.edit_pos,
-        )
-        self.set_edit_text(matching_suggestions[0])
-        self.set_edit_pos(len(matching_suggestions[0]) - 1)
-        return None
+        Returns False when there is none or it is no date.
+        """
+        shown = self.ai_suggestions[:MAX_SHOWN]
+        if place >= len(shown):
+            return False
+        try:
+            self.set_answer(shown[place].question)
+        except ValueError:
+            return False
+        return True
 
     def initalise_autocomplete_suggestions(self):
-        self.ai_suggestion_box.base_widget.set_text(
-            ",".join(
-                map(lambda x: x.question, self.ai_suggestions)
-            )  # TODO: determine if question should become question_data
-        )
-        self.ai_suggestion_box.base_widget._invalidate()
+        self.update_autocomplete()
 
     @typechecked
     def get_answer(self) -> Union[str, datetime]:

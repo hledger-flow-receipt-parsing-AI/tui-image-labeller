@@ -4,12 +4,19 @@ from typing import Dict, List, Optional, Union
 import urwid
 from typeguard import typechecked
 
+from tui_labeller.tuis.urwid.ai_suggestions import (
+    MAX_SHOWN,
+    alt_digit,
+    format_suggestions,
+    show_in_box,
+)
 from tui_labeller.tuis.urwid.helper import get_matching_unique_suggestions
 from tui_labeller.tuis.urwid.input_validation.autocomplete_filtering import (
     get_filtered_suggestions,
 )
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.question_data_classes import (
+    AISuggestion,
     InputValidationQuestionData,
 )
 
@@ -150,6 +157,15 @@ class InputValidationQuestion(urwid.Edit):
     def keypress(self, size, key):
         """Overrides the internal/urwid pip package method "keypress" to map
         incoming keys into separate behaviour."""
+        place = alt_digit(key=key)
+        if place is not None:
+            shown = self.shown_ai_suggestions()
+            if place >= len(shown):
+                return None
+            self.apply_suggestion(matching_suggestions=[shown[place].question])
+            return self.safely_go_to_next_question()
+        if key == "," and self.input_type == InputType.FLOAT:
+            key = "."  # a decimal comma, as on Dutch receipts
         if key == "meta u":
             matching_suggestions: List[str] = get_matching_unique_suggestions(
                 suggestions=self.ai_suggestions,
@@ -236,20 +252,32 @@ class InputValidationQuestion(urwid.Edit):
         self._handle_autocomplete()
         self._in_autocomplete = False  # Reset flag
 
+    def shown_ai_suggestions(self) -> List[AISuggestion]:
+        """The suggestions in the AI panel: those that still match what
+        was typed, best first (Alt+0 accepts the first)."""
+        remaining = get_filtered_suggestions(
+            input_text=self.edit_text,
+            available_suggestions=[s.question for s in self.ai_suggestions],
+        )
+        return [s for s in self.ai_suggestions if s.question in remaining][
+            :MAX_SHOWN
+        ]
+
     def _update_ai_suggestions(self):
         """Update the AI suggestion box with filtered suggestions."""
-        if not self.ai_suggestion_box or not self.ai_suggestions:
+        if not self.ai_suggestion_box:
+            return
+        if not self.ai_suggestions:
+            # Do not leave the previous question's suggestions on screen.
+            show_in_box(box=self.ai_suggestion_box, body="-")
             return
 
-        ai_remaining_suggestions = get_filtered_suggestions(
-            input_text=self.edit_text,
-            available_suggestions=list(
-                map(lambda x: x.question, self.ai_suggestions)
-            ),
+        shown = self.shown_ai_suggestions()
+        show_in_box(
+            box=self.ai_suggestion_box,
+            body=format_suggestions(suggestions=shown),
         )
-        ai_suggestions_text = ", ".join(ai_remaining_suggestions)
-        self._set_suggestion_text(self.ai_suggestion_box, ai_suggestions_text)
-        return ai_remaining_suggestions
+        return [suggestion.question for suggestion in shown]
 
     def _update_history_suggestions(self):
         """Update the history suggestion box with filtered suggestions."""

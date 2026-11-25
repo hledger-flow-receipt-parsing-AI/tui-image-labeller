@@ -27,6 +27,7 @@ from typeguard import typechecked
 from urwid import AttrMap
 
 from tui_labeller.categories.category_store import CategoryStore
+from tui_labeller.tuis.urwid.ai_session import AiSession
 from tui_labeller.tuis.urwid.date_question.DateTimeQuestion import (
     DateTimeQuestion,
 )
@@ -434,11 +435,40 @@ def build_category_store(*, config: Any) -> CategoryStore | None:
     return CategoryStore(hierarchy=hierarchy, yaml_path=yaml_path)
 
 
+@typechecked
+def _open_ai_session(
+    *, config: Config, image_paths: list[str]
+) -> AiSession | None:
+    """Suggestions from the locally trained models of hledger-ai for this
+    receipt (``hledger_ai.labeller``).
+
+    None when hledger-ai is not installed, nothing is trained yet
+    (``--train``), or ``--skip-ai`` was given.
+    """
+    if getattr(config, "_skip_ai", False):
+        logger.info("AI suggestions skipped (--skip-ai)")
+        return None
+    try:
+        from hledger_ai.labeller import LabellerSuggester
+    except ImportError:
+        logger.debug("hledger-ai not installed; skipping AI suggestions")
+        return None
+    try:
+        suggester = LabellerSuggester.open(
+            config=config, raw_image_paths=image_paths
+        )
+    except Exception:
+        logger.exception("Opening the AI suggester failed")
+        return None
+    return AiSession(suggester=suggester) if suggester is not None else None
+
+
 def _get_ai_suggestions(
     config: Config,
     image_path: str,
 ) -> dict[str, list[AISuggestion]]:
-    """Run the AI extraction pipeline and return suggestions for the TUI.
+    """Run the Ollama extraction pipeline and return suggestions for the TUI
+    (used while no locally trained model exists, see _open_ai_session).
 
     Returns an empty dict if hledger-ai is not installed or Ollama is
     unavailable.  Works with or without an explicit ``ai:`` section in
@@ -451,8 +481,14 @@ def _get_ai_suggestions(
     try:
         from hledger_ai.ai_receipt_suggester import AIReceiptSuggester
         from hledger_ai.get_models import build_extraction_pipeline
+        from hledger_ai.ollama_client import OllamaClient
 
         ai = config.ai
+        if not OllamaClient(
+            base_url=ai.ollama_url if ai else "http://localhost:11434"
+        ).is_available():
+            logger.debug("Ollama is not running; skipping its suggestions")
+            return {}
 
         # Extract flat category list from config for the LLM classifier.
         category_tree: list[str] = []
@@ -495,13 +531,21 @@ def build_receipt_from_urwid(
 
     _t0 = _time.monotonic()
 
-    # Run AI extraction pipeline for suggestions (non-blocking fallback).
+    # Suggestions from the locally trained models; the Ollama pipeline is
+    # the fallback while nothing is trained yet.
     ai_suggestions: dict[str, list[AISuggestion]] = {}
+    ai_session: AiSession | None = None
     if raw_receipt_img_filepaths:
-        ai_suggestions = _get_ai_suggestions(
-            config=config,
-            image_path=raw_receipt_img_filepaths[0],
+        ai_session = _open_ai_session(
+            config=config, image_paths=raw_receipt_img_filepaths
         )
+        if ai_session is not None:
+            ai_suggestions = ai_session.initial()
+        else:
+            ai_suggestions = _get_ai_suggestions(
+                config=config,
+                image_path=raw_receipt_img_filepaths[0],
+            )
 
     _t1 = _time.monotonic()
     print(f"  [timing] AI suggestions: {_t1 - _t0:.1f}s")
@@ -512,6 +556,7 @@ def build_receipt_from_urwid(
     account_questions = AccountQuestions(
         account_infos_str=account_infos_str,
         accounts_without_csv=accounts_without_csv,
+        ai_suggestions=ai_suggestions,
     )
     withdrawal_questions = WithdrawalQuestions(
         account_infos_str=account_infos_str,
@@ -563,6 +608,8 @@ def build_receipt_from_urwid(
     print(f"  [timing] get_configuration: {_t3 - _t2:.1f}s")
     print(f"  [timing] total before tui.run(): {_t3 - _t0:.1f}s")
 
+    if ai_session is not None:
+        ai_session.attach(tui=tui)
     tui.run()  # Start the first run.
     while True:
         if is_terminated(inputs=tui.inputs):
@@ -579,16 +626,19 @@ def build_receipt_from_urwid(
             ] = get_answers(inputs=tui.inputs)
 
             # Log corrections where user overrode AI suggestions.
-            _log_ai_corrections(
-                config=config,
-                ai_suggestions=ai_suggestions,
-                final_answers=final_answers,
-                image_path=(
-                    raw_receipt_img_filepaths[0]
-                    if raw_receipt_img_filepaths
-                    else None
-                ),
-            )
+            if ai_session is not None:
+                ai_session.finish(tui=tui)
+            else:
+                _log_ai_corrections(
+                    config=config,
+                    ai_suggestions=ai_suggestions,
+                    final_answers=final_answers,
+                    image_path=(
+                        raw_receipt_img_filepaths[0]
+                        if raw_receipt_img_filepaths
+                        else None
+                    ),
+                )
 
             return build_receipt_from_answers(
                 config=config,
@@ -641,6 +691,8 @@ def build_receipt_from_urwid(
             _clear_matching_cli_answer(tui)
 
             current_position: int = tui.get_focus()
+            if ai_session is not None:
+                ai_session.confirm_focused(tui=tui)
             tui = get_configuration(
                 tui=tui,
                 account_questions=account_questions,
@@ -658,6 +710,8 @@ def build_receipt_from_urwid(
             for some_widget in tui.inputs:
                 pile_contents.append((some_widget, ("pack", None)))
             tui.pile.contents = pile_contents
+            if ai_session is not None:
+                ai_session.attach(tui=tui)
 
             # Resume at the first unanswered required question (normally the
             # address selector).  "current position + 1" skipped it, which
@@ -670,6 +724,10 @@ def build_receipt_from_urwid(
 
         else:
             current_position: int = tui.get_focus()
+            if ai_session is not None:
+                # The answer that triggered this reconfiguration (category,
+                # account, ...) re-ranks the suggestions further down.
+                ai_session.confirm_focused(tui=tui)
             tui = get_configuration(
                 tui=tui,
                 account_questions=account_questions,
@@ -687,5 +745,7 @@ def build_receipt_from_urwid(
             for some_widget in tui.inputs:
                 pile_contents.append((some_widget, ("pack", None)))
             tui.pile.contents = pile_contents
+            if ai_session is not None:
+                ai_session.attach(tui=tui)
 
             tui.run(alternative_start_pos=current_position + tui.nr_of_headers)

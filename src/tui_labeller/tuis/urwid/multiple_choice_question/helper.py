@@ -44,21 +44,11 @@ def get_selected_caption(
         selected_index: int,
         indentation: int,
     ) -> str:
-        max_choice_length = max(
-            len(choice) for choice in vc_question_data.choices
-        )
-        suggestion_text = ""
-        for suggestion in vc_question_data.ai_suggestions:
-            if suggestion.question == vc_question_data.choices[selected_index]:
-                # Use fixed-width spacing instead of tabs for consistent
-                # rendering
-                suggestion_text = (
-                    f"{suggestion.probability:.2f} {suggestion.model_name}"
-                )
-        # Replace tabs with spaces and ensure consistent indentation
+        # AI suggestions are shown in the AI panel only: next to the
+        # choices their confidence and source hid the choice itself.
         return (
-            f"{' ' * indentation}{selected_index} {vc_question_data.choices[selected_index]:<{max_choice_length}} "  # noqa: E501
-            f" {suggestion_text}"
+            f"{' ' * indentation}{selected_index}"
+            f" {vc_question_data.choices[selected_index]}"
         )
 
     new_caption: str = vc_question_data.question
@@ -90,24 +80,9 @@ def get_vc_question(
         if batch_size
         else vc_question_data.choices[batch_start:]
     )
-    max_choice_length = max(len(choice) for choice in choices) if choices else 0
-
     for i, choice in enumerate(choices):
-        suggestion_text = ""
-        for suggestion in vc_question_data.ai_suggestions:
-            if suggestion.question == choice:
-                # Use fixed-width spacing instead of tabs for consistent
-                # rendering
-                suggestion_text = (
-                    f"{suggestion.probability:.2f} {suggestion.model_name}"
-                )
-        # Replace tabs with spaces and ensure consistent indentation
-        global_index = batch_start + i
-        line = (
-            f"{' ' * indentation}{global_index} {choice:<{max_choice_length}} "
-            f" {suggestion_text}"
-        )
-        result.append(line)
+        # No AI confidence behind the choices: the AI panel shows it.
+        result.append(f"{' ' * indentation}{batch_start + i} {choice}")
 
     options_text: str = "\n".join(result)
     # Ensure the output is clean ASCII to avoid encoding issues
@@ -156,27 +131,11 @@ def get_vc_question_with_highlight(
         window_end = min(window_start + slots, total)
         visible_indices = [0] + list(range(window_start, window_end))
 
-    max_choice_length = (
-        max(len(all_choices[i]) for i in visible_indices)
-        if visible_indices
-        else 0
-    )
-
     result = [vc_question_data.question]
     for idx in visible_indices:
-        choice = all_choices[idx]
-        suggestion_text = ""
-        for suggestion in vc_question_data.ai_suggestions:
-            if suggestion.question == choice:
-                suggestion_text = (
-                    f"{suggestion.probability:.2f} {suggestion.model_name}"
-                )
+        # No AI confidence behind the choices: the AI panel shows it.
         marker = ">" if idx == highlighted_index else " "
-        line = (
-            f"{marker}{' ' * indentation}{idx} {choice:<{max_choice_length}} "
-            f" {suggestion_text}"
-        )
-        result.append(line)
+        result.append(f"{marker}{' ' * indentation}{idx} {all_choices[idx]}")
 
     options_text: str = "\n".join(result)
     options_text = options_text.encode("ascii", errors="ignore").decode("ascii")

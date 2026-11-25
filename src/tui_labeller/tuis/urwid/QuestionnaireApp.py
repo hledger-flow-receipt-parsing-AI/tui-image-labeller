@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 import tempfile
-from typing import Any, List, Optional, Union
+from typing import Any, Callable, List, Optional, Union
 
 import urwid
 from hledger_core.TransactionObjects.Receipt import (  # For image handling
@@ -12,6 +12,7 @@ from typeguard import typechecked
 from urwid import AttrMap
 
 from tui_labeller.file_read_write_helper import write_to_file
+from tui_labeller.tuis.urwid.ai_suggestions import show_in_box
 from tui_labeller.tuis.urwid.category_question.CategoryQuestion import (
     NEW_CATEGORY_KEY,
     CategoryQuestion,
@@ -100,6 +101,9 @@ class QuestionnaireApp:
             ]
         ] = []
         self.labelled_receipts: List[Receipt] = labelled_receipts
+        # Called with (index left, index reached) when the focus moved to
+        # another question; ai_session.AiSession uses it.
+        self.on_question_change: Optional[Callable[[int, int], None]] = None
         self.pile = urwid.Pile([])
         self.history_store = (
             {}
@@ -310,8 +314,6 @@ class QuestionnaireApp:
         )
         if key in ("enter", "down", "tab", "up"):
             if current_pos >= 0:
-                focused_widget = self.get_focus_widget()
-
                 self._move_focus(current_pos, key)
 
         elif key == "reconfigurer":
@@ -334,9 +336,6 @@ class QuestionnaireApp:
                 self.pile.focus_position += 1
             else:
                 self.pile.focus_position = self.nr_of_headers
-            focused_widget = self.inputs[
-                self.pile.focus_position - self.nr_of_headers
-            ].base_widget
             self._update_navigation_screen()
         elif key == "previous_question":
             if self.pile.focus_position > self.nr_of_headers:
@@ -345,16 +344,22 @@ class QuestionnaireApp:
             else:
                 self._move_focus(current_pos=current_pos, key="up")
 
-        if current_pos >= 0:
-            focused_widget = self.inputs[current_pos].base_widget
-            if not isinstance(
-                focused_widget,
-                (
-                    VerticalMultipleChoiceWidget,
-                    HorizontalMultipleChoiceWidget,
-                ),
-            ):
-                focused_widget.update_autocomplete()
+        reached_pos: int = self.get_focus()
+        if reached_pos != current_pos and self.on_question_change is not None:
+            self.on_question_change(current_pos, reached_pos)
+        self.refresh_suggestion_box()
+
+    def refresh_suggestion_box(self) -> None:
+        """Show the suggestions of the question that has the focus (not those
+        of the question that was just left)."""
+        position: int = self.get_focus()
+        if not 0 <= position < len(self.inputs):
+            return
+        focused_widget = self.inputs[position].base_widget
+        if hasattr(focused_widget, "update_autocomplete"):
+            focused_widget.update_autocomplete()
+        else:
+            show_in_box(box=self.ai_suggestion_box, body="-")
 
     def _open_category_tree(self) -> None:
         """Show the new-category screen instead of the questionnaire until the
@@ -462,6 +467,7 @@ class QuestionnaireApp:
                     alternative_start_pos + self.nr_of_headers
                 )
             self._initialise_first_autocomplete()
+            self.announce_focus()
         self.loop.run()
 
     @typechecked
@@ -470,7 +476,16 @@ class QuestionnaireApp:
         if self.inputs:
             self.set_focus(question_index)
             self._initialise_first_autocomplete()
+            self.announce_focus()
         self.loop.run()
+
+    @typechecked
+    def announce_focus(self) -> None:
+        """Tell the listener which question has the focus now (nothing was
+        left: -1) and show that question's suggestions."""
+        if self.on_question_change is not None:
+            self.on_question_change(-1, self.get_focus())
+        self.refresh_suggestion_box()
 
     @typechecked
     def set_focus(self, target_position: int) -> None:

@@ -5,6 +5,13 @@ from hledger_core.Currency import Currency
 from typeguard import typechecked
 from urwid import AttrMap
 
+from tui_labeller.tuis.urwid.ai_suggestions import (
+    MAX_SHOWN,
+    alt_digit,
+    choice_suggestions,
+    format_choice_suggestions,
+    show_in_box,
+)
 from tui_labeller.tuis.urwid.helper import get_matching_unique_suggestions
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType
 from tui_labeller.tuis.urwid.multiple_choice_question.helper import (
@@ -242,9 +249,41 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         )
 
     @typechecked
+    def update_autocomplete(self) -> None:
+        """Show the suggested choices of this question in the AI panel."""
+        show_in_box(
+            box=self.ai_suggestion_box,
+            body=format_choice_suggestions(
+                choices=self.question_data.choices,
+                suggestions=self.question_data.ai_suggestions,
+            ),
+        )
+
+    @typechecked
+    def apply_ai_suggestion(self, *, place: int) -> Union[str, None]:
+        """Select the suggested choice at *place* in the AI panel (0: the best)
+        and continue; nothing happens when there is none."""
+        found = choice_suggestions(
+            choices=self.question_data.choices,
+            suggestions=self.question_data.ai_suggestions,
+        )[:MAX_SHOWN]
+        if place >= len(found):
+            return None
+        index = found[place][0]
+        self.current_batch = index // self.BATCH_SIZE
+        self.set_edit_text(str(index))
+        self.set_edit_pos(len(str(index)))
+        return self.safely_go_to_next_question()
+
+    @typechecked
     def keypress(self, size, key):
         """Overrides the internal/urwid pip package method "keypress" to map
         incoming keys into separate behaviour."""
+        if key == "meta u":
+            return self.apply_ai_suggestion(place=0)
+        place = alt_digit(key=key)
+        if place is not None:
+            return self.apply_ai_suggestion(place=place)
         if key == "tab":
             matching_suggestions: List[str] = get_matching_unique_suggestions(
                 suggestions=self.ai_suggestions + self.history_suggestions,

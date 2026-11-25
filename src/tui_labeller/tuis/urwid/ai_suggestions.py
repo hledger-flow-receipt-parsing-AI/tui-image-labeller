@@ -2,10 +2,10 @@
 
 The suggestions come from hledger-ai (``hledger_ai.labeller``): ranked
 candidates with a confidence per question.  They are shown in the "AI
-suggestions" panel, each with the key that accepts it: Alt+0 the first,
-Alt+1 the second, and so on (Alt+u also accepts the first).  A plain digit
-still answers a multiple choice question with the choice of that number.
-Suggestions never replace an answer the user gave.
+suggestions" panel, each with the key that accepts it: Alt+a the first,
+Alt+b the second, Alt+c the third, and so on (Alt+u also accepts the
+first).  A plain digit still answers a multiple choice question with the
+choice of that number.  Suggestions never replace an answer the user gave.
 """
 
 from typing import Any, List, Optional, Tuple
@@ -14,16 +14,26 @@ from hledger_core.AISuggestion import AISuggestion
 from hledger_core.TransactionObjects.ShopId import ShopId
 from typeguard import typechecked
 
-BOX_HEADER = "AI suggestions (Alt+u accepts):\n"
-MAX_SHOWN = 5
-_ALT_DIGITS = {f"meta {digit}": digit for digit in range(MAX_SHOWN)}
+BOX_HEADER = "AI suggestions:\n"
+# One key per suggestion shown (hledger-ai sends five at most). Not
+# Alt+<digit>: Ptyxis and GNOME Terminal switch tabs with it, so the TUI
+# never gets it. No terminal, desktop or question here uses Alt+a to Alt+e.
+ALT_KEYS = "abcde"
+MAX_SHOWN = len(ALT_KEYS)
+_PLACES = {f"meta {key}": place for place, key in enumerate(ALT_KEYS)}
+# Terminals that do pass Alt+<digit> on: Alt+0 the first, Alt+1 the second.
+_PLACES.update({f"meta {place}": place for place in range(MAX_SHOWN)})
 
 
 @typechecked
-def alt_digit(*, key: Any) -> Optional[int]:
-    """The place (0: first) of the suggestion the key Alt+<place> accepts; None
-    for every other key."""
-    return _ALT_DIGITS.get(key) if isinstance(key, str) else None
+def alt_place(*, key: Any) -> Optional[int]:
+    """The place (0: first) of the suggestion that *key* accepts: Alt+a 0,
+    Alt+b 1, ...; None for every other key.
+
+    (Alt+u, which accepted the first suggestion before these keys
+    existed, is handled by each question itself.)
+    """
+    return _PLACES.get(key) if isinstance(key, str) else None
 
 
 @typechecked
@@ -33,14 +43,14 @@ def _percent(*, probability: float) -> str:
 
 @typechecked
 def _alt_key(*, place: int) -> str:
-    return f"Alt+{place}  "
+    return f"Alt+{ALT_KEYS[place]}  "
 
 
 @typechecked
 def format_suggestions(
     *, suggestions: List[AISuggestion], limit: int = MAX_SHOWN
 ) -> str:
-    """One suggestion per line, best first: ``Alt+0  11.54 (91%)``."""
+    """One suggestion per line, best first: ``Alt+u  11.54 (91%)``."""
     if not suggestions:
         return "-"
     return "\n".join(
@@ -66,7 +76,7 @@ def choice_suggestions(
 def format_choice_suggestions(
     *, choices: List[str], suggestions: List[AISuggestion]
 ) -> str:
-    """``Alt+0  1: alex:wallet:physical (90%)`` per suggested choice; 1 is the
+    """``Alt+u  1: alex:wallet:physical (90%)`` per suggested choice; 1 is the
     number of the choice in the list."""
     found = choice_suggestions(choices=choices, suggestions=suggestions)
     if not found:

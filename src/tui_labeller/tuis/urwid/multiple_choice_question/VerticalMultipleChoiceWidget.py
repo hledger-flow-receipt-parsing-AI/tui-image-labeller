@@ -7,7 +7,7 @@ from urwid import AttrMap
 
 from tui_labeller.tuis.urwid.ai_suggestions import (
     MAX_SHOWN,
-    alt_digit,
+    alt_place,
     choice_suggestions,
     format_choice_suggestions,
     show_in_box,
@@ -281,7 +281,7 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         incoming keys into separate behaviour."""
         if key == "meta u":
             return self.apply_ai_suggestion(place=0)
-        place = alt_digit(key=key)
+        place = alt_place(key=key)
         if place is not None:
             return self.apply_ai_suggestion(place=place)
         if key == "tab":

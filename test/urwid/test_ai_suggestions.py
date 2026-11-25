@@ -76,7 +76,21 @@ def test_suggestions_are_listed_best_first_with_their_alt_key() -> None:
         suggestions=[_ai("11.54", 0.912), _ai("20.00", 0.05)]
     )
 
-    assert text == "Alt+0  11.54 (91%)\nAlt+1  20.00 (5%)"
+    assert text == "Alt+a  11.54 (91%)\nAlt+b  20.00 (5%)"
+
+
+def test_the_panel_shows_five_suggestions_one_per_key() -> None:
+    text = format_suggestions(
+        suggestions=[_ai(f"{n}.00", 0.1) for n in range(1, 8)]
+    )
+
+    assert text.splitlines() == [
+        "Alt+a  1.00 (10%)",
+        "Alt+b  2.00 (10%)",
+        "Alt+c  3.00 (10%)",
+        "Alt+d  4.00 (10%)",
+        "Alt+e  5.00 (10%)",
+    ]
 
 
 def test_no_suggestions_reads_as_none() -> None:
@@ -105,22 +119,25 @@ def test_suggested_choice_is_shown_with_its_number_and_confidence() -> None:
 
     widget.update_autocomplete()
 
-    assert "Alt+0  1: alex:wallet:physical (90%)" in _box_text(box)
-    assert "Alt+1  0: alex:examplebank:checking (10%)" in _box_text(box)
+    # The header names no key: every line names its own.
+    assert _box_text(box).splitlines()[0] == "AI suggestions:"
+    assert "Alt+a  1: alex:wallet:physical (90%)" in _box_text(box)
+    assert "Alt+b  0: alex:examplebank:checking (10%)" in _box_text(box)
 
 
-def test_alt_digit_selects_the_suggested_choice_at_that_place() -> None:
-    # Alt+0 is the first suggestion, Alt+1 the second, Alt+2 the third;
-    # a plain digit still answers with the choice of that number.
-    suggestions = [
-        _ai("alex:wallet:physical", 0.6),
-        _ai("alex:examplebank:checking", 0.3),
-    ]
+def test_alt_a_and_b_select_the_first_and_second_suggested_choice() -> None:
+    # Alt+a is the first suggestion, Alt+b the second, Alt+c the third, ...
+    # (Alt+u also the first); a plain digit still answers with that choice.
     for key, expected in (
-        ("meta 0", "alex:wallet:physical"),
-        ("meta 1", "alex:examplebank:checking"),
+        ("meta a", "alex:wallet:physical"),
+        ("meta b", "alex:examplebank:checking"),
     ):
-        widget, _ = _accounts(suggestions)
+        widget, _ = _accounts(
+            [
+                _ai("alex:wallet:physical", 0.6),
+                _ai("alex:examplebank:checking", 0.3),
+            ]
+        )
 
         result = widget.keypress(SIZE, key)
 
@@ -128,10 +145,25 @@ def test_alt_digit_selects_the_suggested_choice_at_that_place() -> None:
         assert result == "reconfigurer"
 
 
-def test_alt_digit_past_the_last_suggestion_does_nothing() -> None:
+def test_alt_digits_also_pick_by_place_where_the_terminal_passes_them() -> None:
+    # Ptyxis and GNOME Terminal take Alt+<digit> for their tabs; other
+    # terminals pass it on: Alt+0 is then the first, Alt+1 the second.
+    widget, _ = _accounts(
+        [
+            _ai("alex:wallet:physical", 0.6),
+            _ai("alex:examplebank:checking", 0.3),
+        ]
+    )
+
+    widget.keypress(SIZE, "meta 1")
+
+    assert widget.get_answer() == "alex:examplebank:checking"
+
+
+def test_alt_key_past_the_last_suggestion_does_nothing() -> None:
     widget, _ = _accounts([_ai("alex:wallet:physical", 0.9)])
 
-    assert widget.keypress(SIZE, "meta 2") is None
+    assert widget.keypress(SIZE, "meta c") is None
     assert widget.has_answer() is False
 
 
@@ -241,24 +273,24 @@ def test_date_suggestions_are_shown_with_confidence() -> None:
 
     widget.update_autocomplete()
 
-    assert "Alt+0  2025-03-17 14:32 (90%)" in _box_text(box)
+    assert "Alt+a  2025-03-17 14:32 (90%)" in _box_text(box)
 
 
-def test_alt_1_on_the_date_takes_the_second_suggestion() -> None:
+def test_alt_b_on_the_date_takes_the_second_suggestion() -> None:
     widget, _ = _date(
         [_ai("2025-03-17 14:32", 0.6), _ai("2025-03-18 09:05", 0.3)]
     )
 
-    result = widget.keypress(SIZE, "meta 1")
+    result = widget.keypress(SIZE, "meta b")
 
     assert widget.get_answer() == datetime(2025, 3, 18, 9, 5)
     assert result == "next_question"
 
 
-def test_alt_digit_without_that_date_suggestion_keeps_the_date() -> None:
+def test_alt_key_without_that_date_suggestion_keeps_the_date() -> None:
     widget, _ = _date([_ai("2025-03-17 14:32", 0.9)])
 
-    assert widget.keypress(SIZE, "meta 2") is None
+    assert widget.keypress(SIZE, "meta c") is None
     assert widget.get_answer() == datetime(2025, 3, 17, 14, 32)
 
 
@@ -308,9 +340,23 @@ def test_typing_narrows_the_suggestions_shown() -> None:
     assert "11.54" not in _box_text(box)
 
 
-def test_alt_digit_fills_the_suggestion_at_that_place_and_moves_on() -> None:
-    for key, expected in (("meta 0", 11.54), ("meta 1", 20.0)):
-        widget, _ = _amount([_ai("11.54", 0.91), _ai("20.00", 0.05)])
+def test_alt_a_to_e_fill_the_suggestion_at_that_place_and_move_on() -> None:
+    suggestions = [
+        _ai("11.54", 0.5),
+        _ai("20.00", 0.2),
+        _ai("25.00", 0.1),
+        _ai("30.00", 0.05),
+        _ai("35.00", 0.04),
+    ]
+    for key, expected in (
+        ("meta a", 11.54),
+        ("meta b", 20.0),
+        ("meta c", 25.0),
+        ("meta d", 30.0),
+        ("meta e", 35.0),
+        ("meta u", 11.54),
+    ):
+        widget, _ = _amount(suggestions)
 
         result = widget.keypress(SIZE, key)
 
@@ -318,22 +364,22 @@ def test_alt_digit_fills_the_suggestion_at_that_place_and_moves_on() -> None:
         assert result == "next_question"
 
 
-def test_alt_digit_counts_the_suggestions_the_panel_still_shows() -> None:
+def test_alt_key_counts_the_suggestions_the_panel_still_shows() -> None:
     widget, box = _amount(
         [_ai("11.54", 0.6), _ai("20.00", 0.3), _ai("25.00", 0.1)]
     )
     widget.keypress(SIZE, "2")  # the panel now lists 20.00 and 25.00
 
-    widget.keypress(SIZE, "meta 1")
+    widget.keypress(SIZE, "meta b")
 
-    assert "Alt+1  25.00 (10%)" in _box_text(box)
+    assert "Alt+b  25.00 (10%)" in _box_text(box)
     assert widget.get_answer() == 25.0
 
 
-def test_alt_digit_past_the_last_typed_suggestion_does_nothing() -> None:
+def test_alt_key_past_the_last_typed_suggestion_does_nothing() -> None:
     widget, _ = _amount([_ai("11.54", 0.91)])
 
-    assert widget.keypress(SIZE, "meta 1") is None
+    assert widget.keypress(SIZE, "meta b") is None
     assert widget.get_edit_text() == ""
 
 
@@ -348,7 +394,7 @@ def test_a_decimal_comma_is_typed_as_a_decimal_point() -> None:
     assert widget.get_answer() == 6.35
 
 
-def test_alt_digit_on_the_category_picks_that_suggested_category() -> None:
+def test_alt_b_on_the_category_picks_the_second_suggested_category() -> None:
     from tui_labeller.categories.category_store import CategoryStore
     from tui_labeller.tuis.urwid.receipts.BaseQuestions import BaseQuestions
 
@@ -362,7 +408,7 @@ def test_alt_digit_on_the_category_picks_that_suggested_category() -> None:
     ).get_category_question()
     widget, _ = _widget(data)
 
-    result = widget.keypress(SIZE, "meta 1")
+    result = widget.keypress(SIZE, "meta b")
 
     assert widget.get_answer() == "tools:garden"
     assert result == "reconfigurer"

@@ -6,7 +6,7 @@ from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.ai_suggestions import (
     MAX_SHOWN,
-    alt_digit,
+    alt_place,
     format_suggestions,
     show_in_box,
 )
@@ -157,7 +157,7 @@ class InputValidationQuestion(urwid.Edit):
     def keypress(self, size, key):
         """Overrides the internal/urwid pip package method "keypress" to map
         incoming keys into separate behaviour."""
-        place = alt_digit(key=key)
+        place = alt_place(key=key)
         if place is not None:
             shown = self.shown_ai_suggestions()
             if place >= len(shown):
@@ -254,7 +254,7 @@ class InputValidationQuestion(urwid.Edit):
 
     def shown_ai_suggestions(self) -> List[AISuggestion]:
         """The suggestions in the AI panel: those that still match what
-        was typed, best first (Alt+0 accepts the first)."""
+        was typed, best first (Alt+a accepts the first)."""
         remaining = get_filtered_suggestions(
             input_text=self.edit_text,
             available_suggestions=[s.question for s in self.ai_suggestions],

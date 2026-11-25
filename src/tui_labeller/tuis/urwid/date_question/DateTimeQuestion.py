@@ -7,7 +7,7 @@ from urwid.widget.pile import Pile
 
 from tui_labeller.tuis.urwid.ai_suggestions import (
     MAX_SHOWN,
-    alt_digit,
+    alt_place,
     format_suggestions,
     show_in_box,
 )
@@ -73,7 +73,7 @@ class DateTimeQuestion(urwid.Edit):
             if self.apply_first_ai_suggestion():
                 return "next_question"
             return None
-        place = alt_digit(key=key)
+        place = alt_place(key=key)
         if place is not None:
             if self.apply_ai_suggestion(place=place):
                 return "next_question"
@@ -289,7 +289,7 @@ class DateTimeQuestion(urwid.Edit):
         return False
 
     def apply_ai_suggestion(self, *, place: int) -> bool:
-        """Take over the suggestion at *place* in the AI panel (Alt+<place>).
+        """Take over the suggestion at *place* in the AI panel (Alt+b: 1).
 
         Returns False when there is none or it is no date.
         """

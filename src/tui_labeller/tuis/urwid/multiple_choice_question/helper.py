@@ -1,8 +1,21 @@
+import unicodedata
+from typing import List, Optional
+
 from typeguard import typechecked
 
 from tui_labeller.tuis.urwid.question_data_classes import (
     VerticalMultipleChoiceQuestionData,
 )
+
+
+def _ascii(*, text: str) -> str:
+    """Plain ASCII for the terminal, accents dropped rather than the letter:
+
+    "Bäckerei" shows as "Backerei", which a typed filter "back" finds.
+    """
+    decomposed = unicodedata.normalize("NFKD", text)
+    plain = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return plain.encode("ascii", errors="ignore").decode("ascii")
 
 
 def input_is_in_int_range(
@@ -86,8 +99,22 @@ def get_vc_question(
 
     options_text: str = "\n".join(result)
     # Ensure the output is clean ASCII to avoid encoding issues
-    options_text = options_text.encode("ascii", errors="ignore").decode("ascii")
+    options_text = _ascii(text=options_text)
     return f"\n{options_text}\n"
+
+
+def _window_over(
+    *, indices: List[int], highlighted_index: int, window_size: int
+) -> List[int]:
+    """Up to *window_size* of *indices* (a filtered list): the first one
+    pinned, the rest a window that keeps the highlighted one visible."""
+    if len(indices) <= window_size:
+        return list(indices)
+    rest = indices[1:]
+    slots = window_size - 1
+    at = rest.index(highlighted_index) if highlighted_index in rest else 0
+    start = max(0, min(at - slots // 2, len(rest) - slots))
+    return [indices[0]] + rest[start : start + slots]  # noqa: E203
 
 
 def get_vc_question_with_highlight(
@@ -96,6 +123,8 @@ def get_vc_question_with_highlight(
     indentation: int,
     highlighted_index: int,
     window_size: int = 12,
+    indices: Optional[List[int]] = None,
+    header: Optional[str] = None,
 ) -> str:
     """Render the choice list with a visible window that scrolls to keep the
     highlighted item visible.  Index 0 is always pinned at the top.
@@ -103,6 +132,10 @@ def get_vc_question_with_highlight(
     The visible window contains up to *window_size* entries.  When the
     highlighted index moves beyond the window, the window shifts so the
     highlighted item stays visible.
+
+    *indices* limits the list to those choice numbers (the typed filter,
+    see choice_filter); *header* is a line under the question (what was
+    typed). Choices keep their own numbers.
     """
     all_choices = vc_question_data.choices
     total = len(all_choices)
@@ -112,7 +145,13 @@ def get_vc_question_with_highlight(
     highlighted_index = max(0, min(highlighted_index, total - 1))
 
     # Determine which indices to show.
-    if total <= window_size:
+    if indices is not None:
+        visible_indices = _window_over(
+            indices=indices,
+            highlighted_index=highlighted_index,
+            window_size=window_size,
+        )
+    elif total <= window_size:
         visible_indices = list(range(total))
     else:
         # Index 0 is always pinned; the remaining (window_size - 1) slots
@@ -132,11 +171,13 @@ def get_vc_question_with_highlight(
         visible_indices = [0] + list(range(window_start, window_end))
 
     result = [vc_question_data.question]
+    if header is not None:
+        result.append(header)
     for idx in visible_indices:
         # No AI confidence behind the choices: the AI panel shows it.
         marker = ">" if idx == highlighted_index else " "
         result.append(f"{marker}{' ' * indentation}{idx} {all_choices[idx]}")
 
     options_text: str = "\n".join(result)
-    options_text = options_text.encode("ascii", errors="ignore").decode("ascii")
+    options_text = _ascii(text=options_text)
     return f"\n{options_text}\n"

@@ -14,6 +14,10 @@ from tui_labeller.tuis.urwid.ai_suggestions import (
 )
 from tui_labeller.tuis.urwid.helper import get_matching_unique_suggestions
 from tui_labeller.tuis.urwid.input_validation.InputType import InputType
+from tui_labeller.tuis.urwid.multiple_choice_question.choice_filter import (
+    PINNED,
+    visible_choices,
+)
 from tui_labeller.tuis.urwid.multiple_choice_question.helper import (
     get_selected_caption,
     get_vc_question,
@@ -49,6 +53,18 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         # The choices the typed number refers to; refresh_choices() keeps
         # the answer by value when question_data.choices are replaced.
         self._choices_shown: List[str] = list(question_data.choices)
+        # Typed letters keep only the choices that contain them (the shop
+        # address list, extra_data "filterable"); see choice_filter.
+        self._filterable: bool = bool(
+            question_data.extra_data
+            and question_data.extra_data.get("filterable")
+        )
+        self._filter: str = ""
+        # Whether the highlighted choice was picked by the filter (the
+        # first match), not by the user; and what was selected before the
+        # filter was typed, given back when it is removed again.
+        self._highlight_by_filter: bool = False
+        self._before_filter: tuple = (None, False)  # (choice text, guess)
         super().__init__(caption=self._get_batch_caption())
         self.input_type: InputType = InputType.INTEGER
         self.ai_suggestions = ai_suggestions or []
@@ -98,6 +114,15 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
                     idx = int(text)
             except (ValueError, AttributeError):
                 idx = 0
+            if self._filter:
+                return get_vc_question_with_highlight(
+                    vc_question_data=self.question_data,
+                    indentation=self.indentation,
+                    highlighted_index=idx,
+                    window_size=MAX_VISIBLE_ADDRESSES,
+                    indices=self._visible(),
+                    header=self._filter_header(),
+                )
             return get_vc_question_with_highlight(
                 vc_question_data=self.question_data,
                 indentation=self.indentation,
@@ -268,6 +293,151 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
             )
         )
 
+    # ------------------------------------------------- typed letter filter
+
+    @typechecked
+    def _visible(self) -> List[int]:
+        """Numbers of the choices the filter keeps (all without one)."""
+        return visible_choices(
+            choices=self.question_data.choices, typed=self._filter
+        )
+
+    @typechecked
+    def _filter_header(self) -> str:
+        pinned = [i for i in PINNED if i < len(self.question_data.choices)]
+        kept = len(self._visible()) - len(pinned)
+        total = len(self.question_data.choices) - len(pinned)
+        return f"Filter: {self._filter}  ({kept} of {total} match)"
+
+    @typechecked
+    def _selected(self) -> Union[int, None]:
+        try:
+            return int(self.edit_text) if self.edit_text.strip() else None
+        except ValueError:
+            return None
+
+    @typechecked
+    def _highlight(self, *, index: int) -> None:
+        self.set_edit_text(str(index))
+        self.set_edit_pos(len(str(index)))
+
+    @typechecked
+    def _selected_choice(self) -> Union[str, None]:
+        selected = self._selected()
+        choices = self.question_data.choices
+        if selected is None or not 0 <= selected < len(choices):
+            return None
+        return choices[selected]
+
+    @typechecked
+    def _highlight_first_match(self) -> None:
+        """Highlight the first shown match (manual address when nothing
+        matches), as a guess: Enter takes it, a digit replaces it."""
+        visible = self._visible()
+        matches = [i for i in visible if i not in PINNED] or visible
+        if not matches:
+            return
+        self._highlight(index=matches[0])
+        self._highlight_by_filter = True
+        self._default_untouched = True
+
+    @typechecked
+    def _set_filter(self, *, typed: str) -> None:
+        """Filter on *typed* and keep a shown choice highlighted: the user's
+        pick while it still matches, else the first match.
+
+        Without
+        a filter again, the selection from before it comes back (by its
+        text: the list may have been re-ordered meanwhile).
+        """
+        if typed and not self._filter:
+            self._before_filter = (
+                self._selected_choice(),
+                self._default_untouched,
+            )
+        self._filter = typed
+        if not typed:
+            if self._highlight_by_filter:  # give the old selection back
+                choice, untouched = self._before_filter
+                choices = self.question_data.choices
+                text = str(choices.index(choice)) if choice in choices else ""
+                self.set_edit_text(text)
+                self.set_edit_pos(len(text))
+                self._default_untouched = untouched and bool(text)
+            self._highlight_by_filter = False
+        elif self._highlight_by_filter or self._hidden_by_filter():
+            self._highlight_first_match()
+        self.set_caption(self._get_batch_caption())
+
+    @typechecked
+    def _keep_filter_view(self) -> None:
+        """After the choices or the answer changed from outside (the AI
+        re-ordered the list, or filled in its guess) while a filter is
+        typed: still show the filtered list, with a shown choice
+        highlighted."""
+        if not self._filter:
+            return
+        if self._selected() not in self._visible():
+            self._highlight_first_match()
+        self.set_caption(self._get_batch_caption())
+
+    @typechecked
+    def _hidden_by_filter(self) -> bool:
+        """Whether the typed number is one the filter hides."""
+        return bool(self._filter) and self._selected() not in self._visible()
+
+    @typechecked
+    def _is_filter_char(self, *, key: str) -> bool:
+        return (
+            self._filterable
+            and len(key) == 1
+            and key.isprintable()
+            and not key.isdigit()
+        )
+
+    @typechecked
+    def _type_filtered_digit(self, *, key: str) -> Union[str, None]:
+        """A digit while filtering: the number of a choice that is shown.
+        Selects it as soon as no shown number is longer (Enter goes on);
+        digits of no shown number are refused."""
+        base = "" if self._default_untouched else self.edit_text
+        new_text = base + key
+        visible = self._visible()
+        longer = [i for i in visible if str(i).startswith(new_text)]
+        if not longer:
+            return None
+        self._default_untouched = False
+        self._highlight_by_filter = False
+        self.set_edit_text(new_text)
+        self.set_edit_pos(len(new_text))
+        value = int(new_text)
+        if value in visible and longer == [value]:
+            # Selected, as without a filter: Enter goes on.
+            self.set_caption(
+                self._get_batch_selected_caption(selected_index=value)
+            )
+            return None
+        self.set_caption(self._get_batch_caption())
+        return None
+
+    @typechecked
+    def _scroll_filtered(self, *, direction: int) -> None:
+        """Up/Down while filtering: the next shown choice, wrapping."""
+        visible = self._visible()
+        if not visible:
+            return
+        selected = self._selected()
+        if selected in visible:
+            position = visible.index(selected) + direction
+        else:
+            position = 0 if direction == 1 else len(visible) - 1
+        # The user's pick now, but still a highlight, not typed digits: a
+        # digit replaces it and Backspace takes away a filter letter.
+        self._default_untouched = True
+        self._highlight_by_filter = False
+        self._highlight(index=visible[position % len(visible)])
+        self.set_caption(self._get_batch_caption())
+
     @typechecked
     def update_autocomplete(self) -> None:
         """Show the suggested choices of this question in the AI panel."""
@@ -304,6 +474,23 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
         place = alt_place(key=key)
         if place is not None:
             return self.apply_ai_suggestion(place=place)
+        if self._is_filter_char(key=key):
+            self._set_filter(typed=self._filter + key)
+            return None
+        if self._filter:
+            if key == "esc":
+                self._set_filter(typed="")
+                return None
+            if key in ("backspace", "delete") and (
+                self._default_untouched or not self.edit_text
+            ):
+                self._set_filter(typed=self._filter[:-1])
+                return None
+            if key in ("up", "down"):
+                self._scroll_filtered(direction=-1 if key == "up" else 1)
+                return None
+            if len(key) == 1 and key.isdigit():
+                return self._type_filtered_digit(key=key)
         if key == "tab":
             matching_suggestions: List[str] = get_matching_unique_suggestions(
                 suggestions=self.ai_suggestions + self.history_suggestions,
@@ -323,6 +510,8 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
 
         if key == "end":
             if self.edit_pos == len(self.edit_text):
+                if self._hidden_by_filter():
+                    return None  # a number the filter hides
                 # End at end of question moves to next question.
                 return self.safely_go_to_next_question()
             self.set_edit_pos(len(self.edit_text))  # Move to end of input box.
@@ -336,6 +525,8 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
                 try:
                     current_index = int(self.edit_text)
                     max_choice = len(self.question_data.choices) - 1
+                    if self._hidden_by_filter():
+                        return None  # a number the filter hides
                     if 0 <= current_index <= max_choice:
                         self.set_caption(
                             self._get_batch_selected_caption(
@@ -553,6 +744,7 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
                 selected_index=int(self.get_edit_text())
             )
         )
+        self._keep_filter_view()
 
     @typechecked
     def refresh_choices(self) -> None:
@@ -594,3 +786,4 @@ class VerticalMultipleChoiceWidget(urwid.Edit):
                 # If the answer can't be set (e.g., due to index issues), clear
                 # it
                 self.set_edit_text("")
+        self._keep_filter_view()

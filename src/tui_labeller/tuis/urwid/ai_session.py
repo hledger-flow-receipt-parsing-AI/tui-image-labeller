@@ -59,6 +59,15 @@ MANAGED_QUESTIONS: Dict[str, str] = {
     "amount": "amount",
     "change": "change",
     ADDRESS_SELECTOR: ADDRESS_SELECTOR,
+    # The manual address questions (asked after "manual address"): read
+    # from the receipt, and the usual city and country of a shop
+    # (hledger_ai.address_parts).
+    "shop_name": "shop_name",
+    "shop_street": "shop_street",
+    "shop_house_nr": "shop_house_nr",
+    "shop_zipcode": "shop_zipcode",
+    "shop_city": "shop_city",
+    "shop_country": "shop_country",
     "subtotal": "subtotal",
     "total_tax": "total_tax",
 }

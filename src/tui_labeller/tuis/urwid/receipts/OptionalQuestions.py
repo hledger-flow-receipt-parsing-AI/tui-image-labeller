@@ -55,9 +55,15 @@ class OptionalQuestions:
                     urwid.Pile(
                         [
                             urwid.Text(("navigation", "Navigation")),
-                            urwid.Text("Q          - quit"),
                             urwid.Text("Up/Down    - scroll through addresses"),
                             urwid.Text("Type a number to select that answer."),
+                            urwid.Text(
+                                "Letters    - show only addresses with"
+                                " them (* = anything)"
+                            ),
+                            urwid.Text(
+                                "Backspace  - remove a filter letter, Esc all"
+                            ),
                             urwid.Text(
                                 "Enter      - confirm choice, goto next"
                                 " question."
@@ -66,7 +72,11 @@ class OptionalQuestions:
                     ),
                     "normal",
                 ),
-                extra_data={"shop_ids": shop_ids, "scrollable": True},
+                extra_data={
+                    "shop_ids": shop_ids,
+                    "scrollable": True,
+                    "filterable": True,
+                },
             ),
             InputValidationQuestionData(
                 question="\nSubtotal (Optional, press enter to skip):\n",

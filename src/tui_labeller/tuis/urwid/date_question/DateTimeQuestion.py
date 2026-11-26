@@ -17,7 +17,6 @@ from tui_labeller.tuis.urwid.date_question.helper import (
 from tui_labeller.tuis.urwid.date_question.update_digit_value import (
     update_digit_value,
 )
-from tui_labeller.tuis.urwid.helper import get_matching_unique_suggestions
 from tui_labeller.tuis.urwid.question_data_classes import (
     AISuggestion,
     DateQuestionData,
@@ -92,20 +91,13 @@ class DateTimeQuestion(urwid.Edit):
             )
         if key in ["delete", "backspace"]:
             return None
-        # TODO 3: Ensure that pressing "Tab" moves it to the next segment
         if key == "tab":
-            matching_suggestions: List[str] = get_matching_unique_suggestions(
-                suggestions=self.ai_suggestions,
-                current_text=self.get_edit_text(),
-                cursor_pos=self.edit_pos,
-            )
-            if (
-                len(matching_suggestions) == 1
-                and self.apply_first_ai_suggestion()
-            ):
-                return "next_question"
-            else:
-                return self.move_to_next_part()
+            # Tab goes to the next part (year -> month -> day -> hour ->
+            # minute), and from the last part to the next question.  It
+            # used to take over the AI date when only one was suggested,
+            # which jumped from the year straight to the next question;
+            # Alt+a and Alt+u take a suggested date.
+            return self.move_to_next_part()
         if key == "end":
             if self.edit_pos == len(self.edit_text) - 1:
                 # End at end of question moves to next question.

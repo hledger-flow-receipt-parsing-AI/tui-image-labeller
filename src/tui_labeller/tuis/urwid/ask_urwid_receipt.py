@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 from copy import deepcopy
 from datetime import datetime
@@ -57,6 +58,7 @@ from tui_labeller.tuis.urwid.question_app.reconfiguration.reconfiguration import
 )
 from tui_labeller.tuis.urwid.question_data_classes import AISuggestion
 from tui_labeller.tuis.urwid.QuestionnaireApp import QuestionnaireApp
+from tui_labeller.tuis.urwid.receipt_tags import ReceiptTags
 from tui_labeller.tuis.urwid.receipts.AccountQuestions import AccountQuestions
 from tui_labeller.tuis.urwid.receipts.BaseQuestions import (
     BaseQuestions,
@@ -72,6 +74,10 @@ from tui_labeller.tuis.urwid.screen_session import (
     resume_screen,
     shared_screen,
     suspend_screen,
+)
+from tui_labeller.tuis.urwid.skip_receipt import (
+    ReceiptSkipped,
+    receipt_skipping,
 )
 
 logger = logging.getLogger(__name__)
@@ -536,13 +542,20 @@ def build_receipt_from_urwid(
     # Draws the evidence of the AI suggestions on the receipt photo (the
     # receipt window of hledger-receipt-processing); None: no boxes.
     highlighter: Any = None,
+    # Offer to skip this receipt for now (Alt+s, the button at the top
+    # right): the labelling loop, which then goes on with the next one.
+    allow_skip: bool = False,
 ) -> Receipt:
     """Label one receipt in the TUI.
 
     Its questionnaires (one per reconfiguration) share one terminal
     screen, so the TUI stays on screen between questions.
+
+    Raises skip_receipt.ReceiptSkipped when the user skipped the receipt
+    (only with *allow_skip*).
     """
-    with shared_screen():
+    skipping = receipt_skipping() if allow_skip else contextlib.nullcontext()
+    with shared_screen(), skipping:
         return _build_receipt_from_urwid(
             config=config,
             raw_receipt_img_filepaths=raw_receipt_img_filepaths,
@@ -631,6 +644,13 @@ def _build_receipt_from_urwid(
         accounts_without_csv=accounts_without_csv,
     )
 
+    # Events and projects of this receipt (Alt+t); kept over rebuilds.
+    receipt_tags = ReceiptTags.for_receipt(
+        config=config,
+        labelled_receipts=labelled_receipts,
+        prefilled_receipt=prefilled_receipt,
+    )
+
     _t2 = _time.monotonic()
     print(f"  [timing] question setup: {_t2 - _t1:.1f}s")
 
@@ -654,8 +674,14 @@ def _build_receipt_from_urwid(
 
     if ai_session is not None:
         ai_session.attach(tui=tui)
+    receipt_tags.attach(tui=tui)
     tui.run()  # Start the first run.
     while True:
+        if tui.skip_requested:
+            # Alt+s (or the Skip button) and a yes in the red dialog: no
+            # label for this receipt; the labelling loop goes on with the
+            # next one.
+            raise ReceiptSkipped()
         if is_terminated(inputs=tui.inputs):
             final_answers: list[
                 tuple[
@@ -691,6 +717,7 @@ def _build_receipt_from_urwid(
                 verbose=True,
                 hledger_account_infos=hledger_account_infos,
                 accounts_without_csv=accounts_without_csv,
+                tags=receipt_tags.tags,
             )
 
         elif csv_transactions_per_account is not None and _wants_matching_cli(
@@ -756,6 +783,7 @@ def _build_receipt_from_urwid(
             tui.pile.contents = pile_contents
             if ai_session is not None:
                 ai_session.attach(tui=tui)
+            receipt_tags.attach(tui=tui)
 
             # Resume at the first unanswered required question (normally the
             # address selector).  "current position + 1" skipped it, which
@@ -791,5 +819,6 @@ def _build_receipt_from_urwid(
             tui.pile.contents = pile_contents
             if ai_session is not None:
                 ai_session.attach(tui=tui)
+            receipt_tags.attach(tui=tui)
 
             tui.run(alternative_start_pos=current_position + tui.nr_of_headers)

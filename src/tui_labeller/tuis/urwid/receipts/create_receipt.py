@@ -52,6 +52,8 @@ def build_receipt_from_answers(
     verbose: bool,
     hledger_account_infos: set[HledgerFlowAccountInfo],
     accounts_without_csv: set[str],
+    # Events and projects (receipt_tags, Alt+t).
+    tags: Optional[List[str]] = None,
 ) -> Receipt:
     """Builds a Receipt object from the dictionary of answers returned by
     tui.get_answers()
@@ -249,6 +251,7 @@ def build_receipt_from_answers(
         ),
         "receipt_category": average_receipt_category,
         "withdrawal_metadata": withdrawal_metadata,
+        "tags": list(tags or []),
     }
     receipt_params["config"] = config
 

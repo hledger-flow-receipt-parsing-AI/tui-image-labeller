@@ -44,7 +44,29 @@ from tui_labeller.tuis.urwid.question_data_classes import (
     InputValidationQuestionData,
     VerticalMultipleChoiceQuestionData,
 )
+from tui_labeller.tuis.urwid.receipt_tags import (
+    NAVIGATION_HINT as TAGS_NAVIGATION_HINT,
+)
+from tui_labeller.tuis.urwid.receipt_tags import PALETTE as TAGS_PALETTE
+from tui_labeller.tuis.urwid.receipt_tags import (
+    TAG_KEY,
+    TagsEditor,
+    editor_overlay,
+    receipt_day,
+)
 from tui_labeller.tuis.urwid.screen_session import current_screen
+from tui_labeller.tuis.urwid.skip_receipt import (
+    BUTTON_LABEL,
+    NAVIGATION_HINT,
+)
+from tui_labeller.tuis.urwid.skip_receipt import PALETTE as SKIP_PALETTE
+from tui_labeller.tuis.urwid.skip_receipt import (
+    SKIP_KEY,
+    SkipButton,
+    SkipConfirmation,
+    confirmation_overlay,
+    skipping_allowed,
+)
 
 
 def _resolve_log_file() -> str:
@@ -102,7 +124,7 @@ class QuestionnaireApp:
         self.descriptor_col_width: int = 20
         self.header = header
         self.nr_of_headers: int = len(self.header.splitlines())
-        self.palette = setup_palette()
+        self.palette = setup_palette() + SKIP_PALETTE + TAGS_PALETTE
         self.questions = questions
         self.inputs: List[
             Union[
@@ -124,13 +146,32 @@ class QuestionnaireApp:
         # are being worked out, a loading bar in the centre (set_progress).
         self.header_text = urwid.Text(header)
         self.progress_text = urwid.Text("", align="center")
-        # The header keeps its width; a blank of the same width on the
-        # right keeps the bar in the centre of the row.
+        # While receipts are labelled one after the other, a receipt can be
+        # skipped for now (skip_receipt): Alt+s or the button at the top
+        # right, after a red "Are you sure?".
+        self.skip_allowed: bool = skipping_allowed()
+        self.skip_requested: bool = False
+        self._skip_dialog: Optional[SkipConfirmation] = None
+        # The receipt's tags (receipt_tags.ReceiptTags.attach): shown under
+        # the Skip button, edited with Alt+t.
+        self.receipt_tags: Any = None
+        self._tags_text: Optional[urwid.Text] = None
+        self._tags_editor: Optional[TagsEditor] = None
+        # The header and the right column have the same width, which keeps
+        # the bar in the centre of the row.
+        first_line = header.splitlines()[0]
+        if self.skip_allowed:
+            side = max(len(first_line), len(BUTTON_LABEL))
+            right: urwid.Widget = SkipButton(on_click=self.ask_to_skip)
+        else:
+            side = len(first_line)
+            right = urwid.Text(" " * side)
+        self._header_right = urwid.Pile([right])
         self.header_widget = urwid.Columns(
             [
-                ("pack", self.header_text),
+                ("given", side, self.header_text),
                 self.progress_text,
-                ("pack", urwid.Text(" " * len(header.splitlines()[0]))),
+                ("given", side, self._header_right),
             ]
         )
         self.history_store = (
@@ -197,6 +238,11 @@ class QuestionnaireApp:
                         " question"
                     ),
                 ]
+                + (
+                    [urwid.Text(f"{indent}{NAVIGATION_HINT}")]
+                    if self.skip_allowed
+                    else []
+                )
             ),
             "normal",
         )
@@ -296,12 +342,85 @@ class QuestionnaireApp:
         self.loop.draw_screen = draw_and_mark
 
     def _filter_input(self, keys: List[Any], raw: List[int]) -> List[Any]:
-        """Keys that act on the whole questionnaire (Alt+h) are taken here,
-        before any question sees them."""
+        """Keys that act on the whole questionnaire (Alt+h, Alt+s) are taken
+        here, before any question sees them."""
         if self.on_toggle_highlights is not None and "meta h" in keys:
             self.on_toggle_highlights()
             keys = [key for key in keys if key != "meta h"]
+        if self.skip_allowed and SKIP_KEY in keys:
+            keys = [key for key in keys if key != SKIP_KEY]
+            self.ask_to_skip()
+        if self.receipt_tags is not None and TAG_KEY in keys:
+            keys = [key for key in keys if key != TAG_KEY]
+            self.edit_tags()
         return keys
+
+    @typechecked
+    def show_receipt_tags(self, *, text: str) -> None:
+        """Show the receipt's tags under the Skip button."""
+        if self._tags_text is None:
+            self._tags_text = urwid.Text("", align="right")
+            self._header_right.contents.append(
+                (self._tags_text, self._header_right.options())
+            )
+            self.add_navigation_hint(text=TAGS_NAVIGATION_HINT)
+        self._tags_text.set_text(("tags", text))
+
+    def edit_tags(self) -> None:
+        """The tags editor over the questions; Enter keeps the typed tags, Esc
+        leaves them as they were."""
+        if (
+            self.receipt_tags is None
+            or self._tags_editor is not None
+            or self._skip_dialog is not None
+        ):
+            return
+        below = self.loop.widget
+
+        def close() -> None:
+            self._tags_editor = None
+            self.loop.widget = below
+
+        def done(text: str) -> None:
+            self.receipt_tags.set_text(text=text)
+            self.show_receipt_tags(text=self.receipt_tags.summary())
+            close()
+
+        self._tags_editor = TagsEditor(
+            receipt_tags=self.receipt_tags,
+            day=receipt_day(inputs=self.inputs),
+            on_done=done,
+            on_cancel=close,
+        )
+        self.loop.widget = editor_overlay(editor=self._tags_editor, below=below)
+
+    def ask_to_skip(self) -> None:
+        """Show the red "Are you sure?" dialog over the questions.
+
+        Yes ends this questionnaire with ``skip_requested`` set (the caller
+        raises skip_receipt.ReceiptSkipped); no closes the dialog and the
+        answers stay as they were.
+        """
+        if (
+            not self.skip_allowed
+            or self._skip_dialog is not None
+            or self._tags_editor is not None
+        ):
+            return
+        below = self.loop.widget
+
+        def yes() -> None:
+            self.skip_requested = True
+            raise urwid.ExitMainLoop()
+
+        def no() -> None:
+            self._skip_dialog = None
+            self.loop.widget = below
+
+        self._skip_dialog = SkipConfirmation(on_yes=yes, on_no=no)
+        self.loop.widget = confirmation_overlay(
+            dialog=self._skip_dialog, below=below
+        )
 
     @typechecked
     def set_progress(self, *, fraction: Optional[float]) -> None:
